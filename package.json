@@ -1,0 +1,24 @@
+{
+  "name": "vk-chatbot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/89hikari/vk-chatbot.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/89hikari/vk-chatbot/issues"
+  },
+  "homepage": "https://github.com/89hikari/vk-chatbot#readme",
+  "dependencies": {
+    "fs": "0.0.1-security",
+    "load-json-file": "^6.2.0",
+    "node-vk-bot-api": "^3.5.0"
+  }
+}
