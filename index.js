@@ -1,6 +1,7 @@
 const loadJsonFile = require('load-json-file');
 const path = require('path')
 const fetch = require('node-fetch');
+const archiver = require('archiver');
 const fs = require('fs');
 var request = require('request');
 var FormData = require('form-data');
@@ -194,7 +195,7 @@ bot.command('Хочу посмотреть открытые вакансии!', 
                         async function saveDoc(file) {
                             return vk.call("docs.save", {
                                 file: file,
-                                title: fullArr[i].files[0].file_name.toString(),
+                                title: fullArr[i].files[0].file_name.toString().split(".")[0] + ".zip",
                                 tags: "test_tag",
                                 return_tags: 1
                             })
@@ -213,30 +214,74 @@ bot.command('Хочу посмотреть открытые вакансии!', 
                                     const url = serv.upload_url;
                                     const me = fullMessage.peer_id;
                                     const server = vk.uploader;
-                                    let SAMPLE_PATH = '/Users/v.belousov/repos/dev/vk-chatbot/'+fullArr[i].files[0].file_name.toString();
-                                    server.upload({
-                                        getUrlMethod: "docs.getMessagesUploadServer",
-                                        getUrlParams: {
-                                            type: "doc",
-                                            peer_id: me,
-                                        },
-                                        saveMethod: "docs.save",
-                                        saveParams: {
-                                            file: url,
-                                            title: fullArr[i].files[0].file_name.toString(),
-                                            tags: "no_tags",
-                                            return_tags: 0
-                                        },
-                                        file: fullArr[i].files[0].file_name,
-                                    }).then(res => {
-                                        console.log(res)
-                                    })
+                                    const output = fs.createWriteStream('./' + fullArr[i].files[0].file_name.toString().split(".")[0] + ".zip");
+                                    const archive = archiver('zip', {
+                                        zlib: { level: 3 } // Sets the compression level.
+                                    });
+                                    output.on('close', function () {
+                                        console.log(archive.pointer() + ' total bytes');
+                                        console.log('archiver has been finalized and the output file descriptor has closed.');
+                                    });
+                                    output.on('end', function () {
+                                        console.log('Data has been drained');
+                                    });
+                                    archive.on('warning', function (err) {
+                                        if (err.code === 'ENOENT') {
+                                            // log warning
+                                        } else {
+                                            // throw error
+                                            throw err;
+                                        }
+                                    });
 
-                                    //console.log(qwe)
-                                    // let fileData = await server.uploadFile(url, fullArr[i].files[0].file_name.toString(), field, {})
-                                    // fileData = await vk.post('photos.saveMessagesPhoto', fileData)
-                                    // fileData = fileData[0]
-                                  
+                                    // good practice to catch this error explicitly
+                                    archive.on('error', function (err) {
+                                        throw err;
+                                    });
+
+                                    if (fullArr[i].files[0].file_name.split(".")[1].includes("doc")) {
+                                        server.upload({
+                                            getUrlMethod: "docs.getMessagesUploadServer",
+                                            getUrlParams: {
+                                                type: "doc",
+                                                peer_id: me,
+                                            },
+                                            saveMethod: "docs.save",
+                                            saveParams: {
+                                                file: url,
+                                                title: fullArr[i].files[0].file_name.toString(),
+                                                tags: "no_tags",
+                                                return_tags: 0
+                                            },
+                                            file: fullArr[i].files[0].file_name.toString(),
+                                        }).then(res => {
+                                            console.log(res.doc.url)
+                                        })
+                                    } else {
+                                        archive.pipe(output);
+                                        const file1 = './' + fullArr[i].files[0].file_name;
+                                        archive.append(fs.createReadStream(file1), { name: fullArr[i].files[0].file_name.toString() });
+                                        archive.finalize();
+
+                                        server.upload({
+                                            getUrlMethod: "docs.getMessagesUploadServer",
+                                            getUrlParams: {
+                                                type: "doc",
+                                                peer_id: me,
+                                            },
+                                            saveMethod: "docs.save",
+                                            saveParams: {
+                                                file: url,
+                                                title: fullArr[i].files[0].file_name.toString().split(".")[0] + ".zip",
+                                                tags: "no_tags",
+                                                return_tags: 0
+                                            },
+                                            file: fullArr[i].files[0].file_name.toString().split(".")[0] + ".zip",
+                                        }).then(res => {
+                                            console.log(res.doc.url)
+                                        })
+                                    }
+
                                     flag = false
                                 }
                             })
