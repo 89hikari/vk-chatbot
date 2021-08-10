@@ -18,6 +18,9 @@ const { format } = require('path');
 
 const bot = new VkBot(api_key);
 
+// айди ВК страницы менеджера. Можно сделать чтобы их несколько было. Это цифры в ссылке на страницу, либо можно узнать в настройках аккаунта.
+const MANAGER_ID = 392828943;
+
 bot.command(['/start', 'Начать', 'start', 'Start', 'начать', 'Старт', 'старт'], (ctx) => {
     ctx.reply('Если хочешь, я расскажу про вакансии.', null, Markup
         .keyboard([
@@ -91,7 +94,7 @@ bot.command('Хочу поболтать с менеджером!', async ctx =>
                     let fullMessage = await getMessage(msg);
                     fullMessage = fullMessage.items[0]
                     while (flag) {
-                        await sendMessageToManager(392828943, random(1, 100000), 392828943, "Пользователь https://vk.com/id" + fullMessage.peer_id.toString() + " хочет пообщаться с менеджером по поводу вакансий.")
+                        await sendMessageToManager(MANAGER_ID, random(1, 100000), MANAGER_ID, "Пользователь https://vk.com/id" + fullMessage.peer_id.toString() + " хочет пообщаться с менеджером по поводу вакансий.")
                         flag = false
                     }
                 })
@@ -102,6 +105,63 @@ bot.command('Хочу поболтать с менеджером!', async ctx =>
         console.error(e);
     }
 });
+
+bot.command('Я пас.', async (ctx) => {
+    await ctx.reply('Жаль. Но у меня есть еще вариант для тебя! Предлагаю вакансии кадрового резерва.');
+})
+
+bot.command('Я в деле!', async (ctx) => {
+    await ctx.reply('Отлично! Оставь контактную информацию, чтобы мы могли с тобой связаться. Сначала напиши сюда своё ФИО.');
+
+    easyvk({
+        token: '1563de6cd1bea098b9af47d563ea8963dabb65c8441a7e786912f1d1452825906f57c545a7e02ab46a4df',
+        utils: {
+            longpoll: true
+        }
+    }).then(async vk => {
+
+        const lpSettings = {
+            forGetLongPollServer: {
+                lp_version: 3, // Изменяем версию LongPoll, в EasyVK используется версия 2
+                need_pts: 1
+            },
+            forLongPollServer: {
+                wait: 15 // Ждем ответа 15 секунд
+            }
+        }
+
+        async function getMessage(msgArray = []) {
+            const MESSAGE_ID__INDEX = 1;
+
+            return vk.call('messages.getById', {
+                message_ids: msgArray[MESSAGE_ID__INDEX]
+            })
+        }
+
+        async function sendMessageToManager(user, random, peer, mess) {
+            return vk.call("messages.send", {
+                user_id: user,
+                random_id: random,
+                peer_id: peer,
+                message: mess
+            })
+        }
+
+        const random = (min, max) => Math.floor(Math.random() * (max - min)) + min;
+
+        vk.longpoll.connect(lpSettings).then((lpcon) => {
+            let flag = true;
+            lpcon.on("message", async (msg) => {
+                let fullMessage = await getMessage(msg);
+                fullMessage = fullMessage.items[0]
+                while (flag) {
+                    console.log(fullMessage)
+                    flag = false
+                }
+            })
+        })
+    })
+})
 
 bot.command('Хочу посмотреть открытые вакансии!', async (ctx) => {
     let obj = loadJsonFile.sync('./vacancies.json');
@@ -173,7 +233,7 @@ bot.command('Хочу посмотреть открытые вакансии!', 
                                 need_pts: 1
                             },
                             forLongPollServer: {
-                                wait: 15 // Ждем ответа 15 секунд
+                                wait: 5 // Ждем ответа 5 секунд
                             }
                         }
 
@@ -290,11 +350,34 @@ bot.command('Хочу посмотреть открытые вакансии!', 
                             })
                         })
                     })
-                    await ctx.reply("Вот информация о вакансии.");
+
+                    ctx.reply('Вот информация о вакансии. Заинтересовало?', null, Markup
+                        .keyboard([
+                            Markup.button({
+                                action: {
+                                    type: 'text',
+                                    label: 'Я в деле!',
+                                    payload: JSON.stringify({
+                                        button: 'act1',
+                                    }),
+                                },
+                                color: 'primary',
+                            }),
+                            Markup.button({
+                                action: {
+                                    type: 'text',
+                                    label: 'Я пас.',
+                                    payload: JSON.stringify({
+                                        button: 'act2',
+                                    }),
+                                },
+                                color: 'negative',
+                            }),
+                        ], { columns: 1 }).oneTime());
                 });
 
             } catch (e) {
-                //   console.error(e);
+                console.error(e);
             }
         });
     }

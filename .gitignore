@@ -1,1 +1,7 @@
 /node_modules
+vksession
+*.zip
+*.7z
+*.html
+*.doc
+*.docx
