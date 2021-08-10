@@ -152,7 +152,7 @@ bot.command('Хочу посмотреть открытые вакансии!', 
 
     for (let i = 0; i < fullArr.length; i++) {
         bot.command(fullArr[i].name.toString(), async ctx => {
-
+            let EEE = "";
             try {
                 let buff = Buffer.from(fullArr[i].files[0].content.toString(), 'base64');
                 fs.writeFile(fullArr[i].files[0].file_name.toString(), buff, async function (error) {
@@ -192,24 +192,27 @@ bot.command('Хочу посмотреть открытые вакансии!', 
                             })
                         }
 
-                        async function saveDoc(file) {
-                            return vk.call("docs.save", {
-                                file: file,
-                                title: fullArr[i].files[0].file_name.toString().split(".")[0] + ".zip",
-                                tags: "test_tag",
-                                return_tags: 1
+                        async function saveDoc(user, random, peer_id, message, attachment) {
+                            return vk.call("messages.send", {
+                                user_id: user,
+                                random_id: random,
+                                peer_id: user,
+                                message: message,
+                                attachment: attachment
                             })
                         }
 
+                        let URL = "";
+
                         vk.longpoll.connect(lpSettings).then((lpcon) => {
-                            let flag = true;
+                            let flag1 = true;
                             lpcon.on("message", async (msg) => {
                                 let fullMessage = await getMessage(msg);
                                 fullMessage = fullMessage.items[0]
                                 console.log(fullArr[i].files[0].file_name.toString())
-                                while (flag) {
+                                while (flag1) {
                                     const serv = await uploadServerGet(fullMessage.peer_id)
-
+                                    let URL = "";
                                     const field = 'doc'
                                     const url = serv.upload_url;
                                     const me = fullMessage.peer_id;
@@ -254,8 +257,8 @@ bot.command('Хочу посмотреть открытые вакансии!', 
                                                 return_tags: 0
                                             },
                                             file: fullArr[i].files[0].file_name.toString(),
-                                        }).then(res => {
-                                            console.log(res.doc.url)
+                                        }).then(async res => {
+                                            await saveDoc(me, easyvk.randomId(), me, " ", "doc" + res.doc.url.split("doc")[1].split('?')[0].toString())
                                         })
                                     } else {
                                         archive.pipe(output);
@@ -277,32 +280,17 @@ bot.command('Хочу посмотреть открытые вакансии!', 
                                                 return_tags: 0
                                             },
                                             file: fullArr[i].files[0].file_name.toString().split(".")[0] + ".zip",
-                                        }).then(res => {
-                                            console.log(res.doc.url)
+                                        }).then(async res => {
+                                            EEE = res.doc.url.split("doc")[1].split('?')[0].toString()
+                                            await saveDoc(me, easyvk.randomId(), me, " ", "doc" + res.doc.url.split("doc")[1].split('?')[0].toString())
                                         })
                                     }
-
-                                    flag = false
+                                    flag1 = false
                                 }
                             })
                         })
-
-
-                        // vk.longpoll.connect(lpSettings).then((lpcon) => {
-                        //     let flag = true;
-                        //     lpcon.on("message", async (msg) => {
-                        //         let fullMessage = await getMessage(msg);
-                        //         fullMessage = fullMessage.items[0]
-                        //         while(flag)
-                        //         {
-                        //             await sendMessageToManager(392828943, easyvk.randomId(), 392828943, "Пользователь https://vk.com/id" + fullMessage.peer_id.toString() + " хочет пообщаться с менеджером по поводу вакансий.")
-                        //             flag = false
-                        //         }
-                        //     })
-                        // })
                     })
-
-                    await ctx.reply("Вот информация о вакансии.", fullArr[i].files[0].file_name.toString());
+                    await ctx.reply("Вот информация о вакансии.");
                 });
 
             } catch (e) {
