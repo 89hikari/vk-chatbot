@@ -1,6 +1,11 @@
 const loadJsonFile = require('load-json-file');
+const path = require('path')
+const fetch = require('node-fetch');
 const fs = require('fs');
-const easyvk = require('easyvk')
+var request = require('request');
+var FormData = require('form-data');
+const easyvk = require('easyvk');
+const rest = require('restler');
 
 const vacancies = require('./vacancies.json');
 const api_key = '1563de6cd1bea098b9af47d563ea8963dabb65c8441a7e786912f1d1452825906f57c545a7e02ab46a4df'
@@ -156,7 +161,8 @@ bot.command('Хочу посмотреть открытые вакансии!', 
                     easyvk({
                         token: '1563de6cd1bea098b9af47d563ea8963dabb65c8441a7e786912f1d1452825906f57c545a7e02ab46a4df',
                         utils: {
-                            longpoll: true
+                            longpoll: true,
+                            uploader: true
                         }
                     }).then(async vk => {
 
@@ -185,15 +191,53 @@ bot.command('Хочу посмотреть открытые вакансии!', 
                             })
                         }
 
+                        async function saveDoc(file) {
+                            return vk.call("docs.save", {
+                                file: file,
+                                title: fullArr[i].files[0].file_name.toString(),
+                                tags: "test_tag",
+                                return_tags: 1
+                            })
+                        }
+
                         vk.longpoll.connect(lpSettings).then((lpcon) => {
                             let flag = true;
                             lpcon.on("message", async (msg) => {
                                 let fullMessage = await getMessage(msg);
                                 fullMessage = fullMessage.items[0]
+                                console.log(fullArr[i].files[0].file_name.toString())
                                 while (flag) {
-                                    let serv = await uploadServerGet(fullMessage.peer_id.toString())
+                                    const serv = await uploadServerGet(fullMessage.peer_id)
+
+                                    const field = 'doc'
+                                    const url = serv.upload_url;
+                                    const me = fullMessage.peer_id;
+                                    const server = vk.uploader;
+                                    let SAMPLE_PATH = '/Users/v.belousov/repos/dev/vk-chatbot/'+fullArr[i].files[0].file_name.toString();
+                                    server.upload({
+                                        getUrlMethod: "docs.getMessagesUploadServer",
+                                        getUrlParams: {
+                                            type: "doc",
+                                            peer_id: me,
+                                        },
+                                        saveMethod: "docs.save",
+                                        saveParams: {
+                                            file: url,
+                                            title: fullArr[i].files[0].file_name.toString(),
+                                            tags: "no_tags",
+                                            return_tags: 0
+                                        },
+                                        file: fullArr[i].files[0].file_name,
+                                    }).then(res => {
+                                        console.log(res)
+                                    })
+
+                                    //console.log(qwe)
+                                    // let fileData = await server.uploadFile(url, fullArr[i].files[0].file_name.toString(), field, {})
+                                    // fileData = await vk.post('photos.saveMessagesPhoto', fileData)
+                                    // fileData = fileData[0]
+                                  
                                     flag = false
-                                    console.log(serv)
                                 }
                             })
                         })

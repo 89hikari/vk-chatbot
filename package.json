@@ -17,10 +17,15 @@
   },
   "homepage": "https://github.com/89hikari/vk-chatbot#readme",
   "dependencies": {
+    "FormData": "^0.10.1",
     "easyvk": "^2.8.2",
     "fs": "0.0.1-security",
     "load-json-file": "^6.2.0",
+    "node-fetch": "^2.6.1",
     "node-vk-bot-api": "^3.5.0",
-    "node-vk-sdk": "^1.1.7"
+    "node-vk-sdk": "^1.1.7",
+    "path": "^0.12.7",
+    "request": "^2.88.2",
+    "restler": "^3.4.0"
   }
 }
