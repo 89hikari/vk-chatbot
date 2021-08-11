@@ -192,12 +192,23 @@ bot.command(['Я пас.', 'Назад к вакансиям кадрового 
                         span.innerHTML = output;
 
                         span.innerHTML = span.innerHTML.replace(/\n{2,}/g, "\n\n");
+                        //span.innerHTML = span.innerHTML.replace(/;/g, ";\n");
+
+                        //span.innerHTML = span.innerHTML.replace(/\s{2,}/g, " ");
+                        span.innerHTML = span.innerHTML.replace(/\n\s/g, "\n");
 
                         let arr = span.innerHTML.split('');
 
                         for (let i = 1; i < arr.length - 1; i++) {
                             if (arr[i] == "\n" && arr[i - 1].match(/[\p{Alpha}\p{M}\p{Nd}\p{Pc}\p{Join_C}-]/gu) && arr[i + 1].match(/[\p{Alpha}\p{M}\p{Nd}\p{Pc}\p{Join_C}-]/gu)) {
                                 arr[i] = " ";
+                            }
+                            if (arr[i] == "\n" && arr[i + 1].match(/\s{1}/g) || arr[i] == " " && arr[i + 1].match(/\n{1}/g)) {
+                                arr[i+1] = "";
+                                i++;
+                            }
+                            if (arr[i] == " " && arr[i + 1] == " ") {
+                                arr[i] = "";
                             }
                         }
 
@@ -233,7 +244,7 @@ bot.command(['Я пас.', 'Назад к вакансиям кадрового 
                     });
                 }
                 else {
-                    await ctx.reply('Описания пока нет :(', null, Markup
+                    await ctx.reply('Описания пока нет 😔', null, Markup
                         .keyboard([
                             Markup.button({
                                 action: {
@@ -403,17 +414,34 @@ bot.command(['Хочу посмотреть открытые вакансии!',
 
                         span.innerHTML = output;
 
-                        span.innerHTML = span.innerHTML.replace(/\n{2,}/g, "\n\n");
-
                         let arr = span.innerHTML.split('');
 
                         for (let i = 1; i < arr.length - 1; i++) {
                             if (arr[i] == "\n" && arr[i - 1].match(/[\p{Alpha}\p{M}\p{Nd}\p{Pc}\p{Join_C}-]/gu) && arr[i + 1].match(/[\p{Alpha}\p{M}\p{Nd}\p{Pc}\p{Join_C}-]/gu)) {
                                 arr[i] = " ";
                             }
+                            if (arr[i] == "\n" && arr[i + 1].match(/\s{1}/g)) {
+                                arr[i+1] = "";
+                                i++;
+                            }
+                            if (arr[i] == " " && arr[i + 1].match(/\n{1}/g)) {
+                                arr[i+1] = "";
+                                i++;
+                            }
+                            if (arr[i] == " " && arr[i + 1] == " ") {
+                                arr[i] = "";
+                            }
                         }
 
                         span.innerHTML = arr.join('');
+
+                        span.innerHTML = span.innerHTML.replace(/\n{2,}/g, "\n\n");
+
+                        span.innerHTML = span.innerHTML.replace(/\n{2,}/g, "\n\n");
+                        //span.innerHTML = span.innerHTML.replace(/;/g, ";\n");
+
+                        //span.innerHTML = span.innerHTML.replace(/\s{2,}/g, " ");
+                        span.innerHTML = span.innerHTML.replace(/\n\s/g, "\n");
 
                         let VACATION_TEXT = span.textContent.split("-->")[1] != undefined ? span.textContent.split("-->")[1].trim() : span.textContent.trim()
 
@@ -467,7 +495,7 @@ bot.command(['Хочу посмотреть открытые вакансии!',
     }
 
     try {
-        await ctx.reply('Класс! Вот наши вакансии, выбирай понравившуюся :)', null, Markup
+        await ctx.reply('Класс! Вот наши вакансии, выбирай понравившуюся 😉', null, Markup
             .keyboard(varArr, { columns: 1 }).oneTime(true));
     } catch (e) {
         console.error(e);
