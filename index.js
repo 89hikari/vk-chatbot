@@ -204,7 +204,7 @@ bot.command(['Я пас.', 'Назад к вакансиям кадрового 
                                 arr[i] = " ";
                             }
                             if (arr[i] == "\n" && arr[i + 1].match(/\s{1}/g) || arr[i] == " " && arr[i + 1].match(/\n{1}/g)) {
-                                arr[i+1] = "";
+                                arr[i + 1] = "";
                                 i++;
                             }
                             if (arr[i] == " " && arr[i + 1] == " ") {
@@ -317,11 +317,76 @@ bot.command('Я в деле!', async (ctx) => {
                 let fullMessage = await getMessage(msg);
                 fullMessage = fullMessage.items[0]
                 while (flag) {
-                    console.log(fullMessage)
-                    flag = false
+                    form.fullname = fullMessage.text;
+                    form.user_id = fullMessage.from_id;
+                    await ctx.reply('Теперь напиши свою почту.');
+                    vk.longpoll.connect(lpSettings).then((lpcon) => {
+                        let flag = true;
+                        lpcon.on("message", async (msg) => {
+                            let fullMessage = await getMessage(msg);
+                            fullMessage = fullMessage.items[0]
+                            while (flag) {
+                                form.email = fullMessage.text;
+                                await ctx.reply('Еще чуть-чуть! Оставь свой номер телефона.');
+                                vk.longpoll.connect(lpSettings).then((lpcon) => {
+                                    let flag = true;
+                                    lpcon.on("message", async (msg) => {
+                                        let fullMessage = await getMessage(msg);
+                                        fullMessage = fullMessage.items[0]
+                                        while (flag) {
+                                            form.number = fullMessage.text;
+                                            await ctx.reply('Хочу узнать тебя получше! Напиши пару слов о себе.');
+                                            vk.longpoll.connect(lpSettings).then((lpcon) => {
+                                                let flag = true;
+                                                lpcon.on("message", async (msg) => {
+                                                    let fullMessage = await getMessage(msg);
+                                                    fullMessage = fullMessage.items[0]
+                                                    while (flag) {
+                                                        form.description = fullMessage.text;
+                                                        await ctx.reply('Теперь тестовое задание. Что решаешь? Посмотришь?', null, Markup
+                                                            .keyboard([
+                                                                Markup.button({
+                                                                    action: {
+                                                                        type: 'text',
+                                                                        label: 'Хочу ТЗ!',
+                                                                        payload: JSON.stringify({
+                                                                            button: 'act1',
+                                                                        }),
+                                                                    },
+                                                                    color: 'positive',
+                                                                }),
+                                                                Markup.button({
+                                                                    action: {
+                                                                        type: 'text',
+                                                                        label: 'Не хочу',
+                                                                        payload: JSON.stringify({
+                                                                            button: 'act1',
+                                                                        }),
+                                                                    },
+                                                                    color: 'negative',
+                                                                }),
+                                                            ], { columns: 1 }).oneTime());
+                                                        flag = false;
+                                                        console.log(form)
+                                                    }
+                                                })
+                                            })
+                                            flag = false;
+                                            console.log(form)
+                                        }
+                                    })
+                                })
+                                flag = false;
+                                console.log(form)
+                            }
+                        })
+                    })
+                    flag = false;
+                    console.log(form)
                 }
             })
         })
+
     })
 })
 
@@ -421,11 +486,11 @@ bot.command(['Хочу посмотреть открытые вакансии!',
                                 arr[i] = " ";
                             }
                             if (arr[i] == "\n" && arr[i + 1].match(/\s{1}/g)) {
-                                arr[i+1] = "";
+                                arr[i + 1] = "";
                                 i++;
                             }
                             if (arr[i] == " " && arr[i + 1].match(/\n{1}/g)) {
-                                arr[i+1] = "";
+                                arr[i + 1] = "";
                                 i++;
                             }
                             if (arr[i] == " " && arr[i + 1] == " ") {
