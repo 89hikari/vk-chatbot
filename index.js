@@ -516,9 +516,7 @@ bot.command(['Хочу посмотреть открытые вакансии!',
                         span.innerHTML = span.innerHTML.replace(/\n{2,}/g, "\n\n");
 
                         span.innerHTML = span.innerHTML.replace(/\n{2,}/g, "\n\n");
-                        //span.innerHTML = span.innerHTML.replace(/;/g, ";\n");
-
-                        //span.innerHTML = span.innerHTML.replace(/\s{2,}/g, " ");
+                       
                         span.innerHTML = span.innerHTML.replace(/\n\s/g, "\n");
 
                         CHOOSEN_ID = fullArr[i].id;
