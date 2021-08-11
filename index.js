@@ -24,6 +24,8 @@ const Markup = require('node-vk-bot-api/lib/markup');
 const { format } = require('path');
 
 const bot = new VkBot(api_key);
+let form = {}
+let CHOOSEN_ID = 0;
 
 // айди ВК страницы менеджера. Можно сделать чтобы их несколько было. Это цифры в ссылке на страницу, либо можно узнать в настройках аккаунта.
 const MANAGER_ID = 392828943;
@@ -53,8 +55,6 @@ bot.command(['/start', 'Начать', 'start', 'Start', 'начать', 'Ста
             }),
         ], { columns: 1 }).oneTime());
 });
-
-const form = {}
 
 bot.command('Хочу поболтать с менеджером!', async ctx => {
 
@@ -218,6 +218,8 @@ bot.command(['Я пас.', 'Назад к вакансиям кадрового 
 
                         await ctx.reply(VACATION_TEXT.toString());
 
+                        CHOOSEN_ID = fullArr[i].id;
+
                         await ctx.reply('Вот информация о вакансии. Заинтересовало?', null, Markup
                             .keyboard([
                                 Markup.button({
@@ -311,6 +313,8 @@ bot.command('Я в деле!', async (ctx) => {
 
         const random = (min, max) => Math.floor(Math.random() * (max - min)) + min;
 
+        form = {}
+
         vk.longpoll.connect(lpSettings).then((lpcon) => {
             let flag = true;
             lpcon.on("message", async (msg) => {
@@ -343,7 +347,8 @@ bot.command('Я в деле!', async (ctx) => {
                                                     fullMessage = fullMessage.items[0]
                                                     while (flag) {
                                                         form.description = fullMessage.text;
-                                                        await ctx.reply('Теперь тестовое задание. Что решаешь? Посмотришь?', null, Markup
+                                                        form.choosen = CHOOSEN_ID;
+                                                        ctx.reply('Теперь тестовое задание. Что решаешь? Посмотришь?', null, Markup
                                                             .keyboard([
                                                                 Markup.button({
                                                                     action: {
@@ -508,6 +513,8 @@ bot.command(['Хочу посмотреть открытые вакансии!',
                         //span.innerHTML = span.innerHTML.replace(/\s{2,}/g, " ");
                         span.innerHTML = span.innerHTML.replace(/\n\s/g, "\n");
 
+                        CHOOSEN_ID = fullArr[i].id;
+
                         let VACATION_TEXT = span.textContent.split("-->")[1] != undefined ? span.textContent.split("-->")[1].trim() : span.textContent.trim()
 
                         await ctx.reply(VACATION_TEXT.toString());
@@ -567,6 +574,23 @@ bot.command(['Хочу посмотреть открытые вакансии!',
     }
 
 });
+
+bot.command('Не хочу', async (ctx) => {
+    await ctx.reply('Отлично пообщались! Удачного поиска работы.');
+    await ctx.reply('Если хочешь пообщаться ещё, напиши "Начать", либо нажми на кнопку.', null, Markup
+        .keyboard([
+            Markup.button({
+                action: {
+                    type: 'text',
+                    label: 'Начать',
+                    payload: JSON.stringify({
+                        button: 'act1',
+                    }),
+                },
+                color: 'positive',
+            }),
+        ], { columns: 1 }).oneTime());
+})
 
 bot.command(['/stop', 'Stop', 'stop', 'Стоп', 'стоп'], async (ctx) => {
     await ctx.reply('До скорого!', null, Markup
