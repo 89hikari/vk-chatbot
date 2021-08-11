@@ -26,6 +26,7 @@ const { format } = require('path');
 const bot = new VkBot(api_key);
 let form = {}
 let CHOOSEN_ID = 0;
+let CHOOSEN_NAME = "";
 
 // айди ВК страницы менеджера. Можно сделать чтобы их несколько было. Это цифры в ссылке на страницу, либо можно узнать в настройках аккаунта.
 const MANAGER_ID = 392828943;
@@ -220,6 +221,8 @@ bot.command(['Я пас.', 'Назад к вакансиям кадрового 
 
                         CHOOSEN_ID = fullArr[i].id;
 
+                        CHOOSEN_NAME = fullArr[i].name;
+
                         await ctx.reply('Вот информация о вакансии. Заинтересовало?', null, Markup
                             .keyboard([
                                 Markup.button({
@@ -272,6 +275,10 @@ bot.command(['Я пас.', 'Назад к вакансиям кадрового 
     } catch (e) {
         console.error(e);
     }
+})
+
+bot.command('Хочу ТЗ!', async (ctx) => {
+    await ctx.reply('// TODO сформировать файл и загрузить пользователю в ЛС. Затем оповестить об этом менеджера в ВК и на почту.');
 })
 
 bot.command('Я в деле!', async (ctx) => {
@@ -347,7 +354,8 @@ bot.command('Я в деле!', async (ctx) => {
                                                     fullMessage = fullMessage.items[0]
                                                     while (flag) {
                                                         form.description = fullMessage.text;
-                                                        form.choosen = CHOOSEN_ID;
+                                                        form.choosen_id = CHOOSEN_ID;
+                                                        form.choosen_name = CHOOSEN_NAME;
                                                         ctx.reply('Теперь тестовое задание. Что решаешь? Посмотришь?', null, Markup
                                                             .keyboard([
                                                                 Markup.button({
@@ -514,6 +522,7 @@ bot.command(['Хочу посмотреть открытые вакансии!',
                         span.innerHTML = span.innerHTML.replace(/\n\s/g, "\n");
 
                         CHOOSEN_ID = fullArr[i].id;
+                        CHOOSEN_NAME = fullArr[i].name;
 
                         let VACATION_TEXT = span.textContent.split("-->")[1] != undefined ? span.textContent.split("-->")[1].trim() : span.textContent.trim()
 
