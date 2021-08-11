@@ -53,7 +53,7 @@ bot.command('Хочу поболтать с менеджером!', async ctx =>
 
     try {
         easyvk({
-            token: '1563de6cd1bea098b9af47d563ea8963dabb65c8441a7e786912f1d1452825906f57c545a7e02ab46a4df',
+            token: api_key,
             utils: {
                 longpoll: true
             }
@@ -106,15 +106,225 @@ bot.command('Хочу поболтать с менеджером!', async ctx =>
     }
 });
 
-bot.command('Я пас.', async (ctx) => {
-    await ctx.reply('Жаль. Но у меня есть еще вариант для тебя! Предлагаю вакансии кадрового резерва.');
+bot.command(['Я пас.', 'Назад к вакансиям кадрового резерва'], async (ctx) => {
+    let obj = loadJsonFile.sync('./vacancies.json');
+
+    let varArr = [];
+
+    let fullArr = [];
+
+    for (let i = 0; i < obj.length; i++) {
+
+        if (obj[i].is_reserve == true) {
+
+            fullArr.push({
+                id: obj[i].id,
+                name: obj[i].name,
+                is_reserve: obj[i].is_reserve,
+                files: obj[i].files ? obj[i].files : null
+            })
+
+            varArr.push(
+                Markup.button({
+                    action: {
+                        type: 'text', // Тип кнопки
+                        label: obj[i].name, // Текст
+                        payload: JSON.stringify({
+                            button: 'act8',
+                        }),
+                    },
+                    color: 'primary', // цвет текста
+                })
+            )
+
+        }
+        console.log(obj[i].name)
+    }
+
+    for (let i = 0; i < fullArr.length; i++) {
+        bot.command(fullArr[i].name, async ctx => {
+            let EEE = "";
+            try {
+                let buff = Buffer.from(fullArr[i].files[0].content.toString(), 'base64');
+                fs.writeFile(fullArr[i].files[0].file_name.toString(), buff, async function (error) {
+                    if (error) throw error; // если возникла ошибка
+                    let data = fs.readFileSync(fullArr[i].files[0].file_name.toString(), "utf8");
+
+                    easyvk({
+                        token: api_key,
+                        utils: {
+                            longpoll: true,
+                            uploader: true
+                        }
+                    }).then(async vk => {
+
+                        const lpSettings = {
+                            forGetLongPollServer: {
+                                lp_version: 3, // Изменяем версию LongPoll, в EasyVK используется версия 2
+                                need_pts: 1
+                            },
+                            forLongPollServer: {
+                                wait: 5 // Ждем ответа 5 секунд
+                            }
+                        }
+
+                        async function getMessage(msgArray = []) {
+                            const MESSAGE_ID__INDEX = 1;
+
+                            return vk.call('messages.getById', {
+                                message_ids: msgArray[MESSAGE_ID__INDEX]
+                            })
+                        }
+
+                        async function uploadServerGet(peer_id) {
+                            return vk.call("docs.getMessagesUploadServer", {
+                                type: "doc",
+                                peer_id: peer_id,
+                            })
+                        }
+
+                        async function saveDoc(user, random, peer_id, message, attachment) {
+                            return vk.call("messages.send", {
+                                user_id: user,
+                                random_id: random,
+                                peer_id: user,
+                                message: message,
+                                attachment: attachment
+                            })
+                        }
+
+                        let URL = "";
+
+                        vk.longpoll.connect(lpSettings).then((lpcon) => {
+                            let flag1 = true;
+                            lpcon.on("message", async (msg) => {
+                                let fullMessage = await getMessage(msg);
+                                fullMessage = fullMessage.items[0]
+                                console.log(fullArr[i].files[0].file_name.toString())
+                                while (flag1) {
+                                    const serv = await uploadServerGet(fullMessage.peer_id)
+                                    let URL = "";
+                                    const field = 'doc'
+                                    const url = serv.upload_url;
+                                    const me = fullMessage.peer_id;
+                                    const server = vk.uploader;
+                                    const output = fs.createWriteStream('./' + fullArr[i].files[0].file_name.toString().split(".")[0] + ".zip");
+                                    const archive = archiver('zip', {
+                                        zlib: { level: 3 } // Sets the compression level.
+                                    });
+                                    output.on('close', function () {
+                                        console.log(archive.pointer() + ' total bytes');
+                                        console.log('archiver has been finalized and the output file descriptor has closed.');
+                                    });
+                                    output.on('end', function () {
+                                        console.log('Data has been drained');
+                                    });
+                                    archive.on('warning', function (err) {
+                                        if (err.code === 'ENOENT') {
+                                            // log warning
+                                        } else {
+                                            // throw error
+                                            throw err;
+                                        }
+                                    });
+
+                                    // good practice to catch this error explicitly
+                                    archive.on('error', function (err) {
+                                        throw err;
+                                    });
+
+                                    if (fullArr[i].files[0].file_name.split(".")[1].includes("doc")) {
+                                        server.upload({
+                                            getUrlMethod: "docs.getMessagesUploadServer",
+                                            getUrlParams: {
+                                                type: "doc",
+                                                peer_id: me,
+                                            },
+                                            saveMethod: "docs.save",
+                                            saveParams: {
+                                                file: url,
+                                                title: fullArr[i].files[0].file_name.toString(),
+                                                tags: "no_tags",
+                                                return_tags: 0
+                                            },
+                                            file: fullArr[i].files[0].file_name.toString(),
+                                        }).then(async res => {
+                                            await saveDoc(me, easyvk.randomId(), me, " ", "doc" + res.doc.url.split("doc")[1].split('?')[0].toString())
+                                        })
+                                    } else {
+                                        archive.pipe(output);
+                                        const file1 = './' + fullArr[i].files[0].file_name;
+                                        archive.append(fs.createReadStream(file1), { name: fullArr[i].files[0].file_name.toString() });
+                                        archive.finalize();
+
+                                        server.upload({
+                                            getUrlMethod: "docs.getMessagesUploadServer",
+                                            getUrlParams: {
+                                                type: "doc",
+                                                peer_id: me,
+                                            },
+                                            saveMethod: "docs.save",
+                                            saveParams: {
+                                                file: url,
+                                                title: fullArr[i].files[0].file_name.toString().split(".")[0] + ".zip",
+                                                tags: "no_tags",
+                                                return_tags: 0
+                                            },
+                                            file: fullArr[i].files[0].file_name.toString().split(".")[0] + ".zip",
+                                        }).then(async res => {
+                                            EEE = res.doc.url.split("doc")[1].split('?')[0].toString()
+                                            await saveDoc(me, easyvk.randomId(), me, " ", "doc" + res.doc.url.split("doc")[1].split('?')[0].toString())
+                                        })
+                                    }
+                                    flag1 = false
+                                }
+                            })
+                        })
+                    })
+
+                    await ctx.reply('Вот информация о вакансии. Заинтересовало?', null, Markup
+                        .keyboard([
+                            Markup.button({
+                                action: {
+                                    type: 'text',
+                                    label: 'Я в деле!',
+                                    payload: JSON.stringify({
+                                        button: 'act9',
+                                    }),
+                                },
+                                color: 'positive',
+                            }),
+                            Markup.button({
+                                action: {
+                                    type: 'text',
+                                    label: 'Назад к вакансиям кадрового резерва',
+                                    payload: JSON.stringify({
+                                        button: 'act10',
+                                    }),
+                                },
+                                color: 'primary',
+                            }),
+                        ], { columns: 1 }).oneTime());
+                });
+
+            } catch (e) {
+                console.error(e);
+            }
+        });
+    }
+    try {
+        await ctx.reply('Жаль. Но у меня есть еще вариант для тебя! Предлагаю вакансии кадрового резерва.', null, Markup
+            .keyboard(varArr, { columns: 1 }).oneTime(true));
+    } catch (e) {
+        console.error(e);
+    }
 })
 
 bot.command('Я в деле!', async (ctx) => {
     await ctx.reply('Отлично! Оставь контактную информацию, чтобы мы могли с тобой связаться. Сначала напиши сюда своё ФИО.');
 
     easyvk({
-        token: '1563de6cd1bea098b9af47d563ea8963dabb65c8441a7e786912f1d1452825906f57c545a7e02ab46a4df',
+        token: api_key,
         utils: {
             longpoll: true
         }
@@ -163,7 +373,7 @@ bot.command('Я в деле!', async (ctx) => {
     })
 })
 
-bot.command('Хочу посмотреть открытые вакансии!', async (ctx) => {
+bot.command(['Хочу посмотреть открытые вакансии!', 'Назад к открытым вакансиям'], async (ctx) => {
     let obj = loadJsonFile.sync('./vacancies.json');
 
     let varArr = [];
@@ -172,14 +382,14 @@ bot.command('Хочу посмотреть открытые вакансии!', 
 
     for (let i = 0; i < obj.length; i++) {
 
-        fullArr.push({
-            id: obj[i].id,
-            name: obj[i].name,
-            is_reserve: obj[i].is_reserve,
-            files: obj[i].files ? obj[i].files : null
-        })
-
         if (obj[i].is_reserve == false) {
+
+            fullArr.push({
+                id: obj[i].id,
+                name: obj[i].name,
+                is_reserve: obj[i].is_reserve,
+                files: obj[i].files ? obj[i].files : null
+            })
             varArr.push(
                 Markup.button({
                     action: {
@@ -220,7 +430,7 @@ bot.command('Хочу посмотреть открытые вакансии!', 
                     let data = fs.readFileSync(fullArr[i].files[0].file_name.toString(), "utf8");
 
                     easyvk({
-                        token: '1563de6cd1bea098b9af47d563ea8963dabb65c8441a7e786912f1d1452825906f57c545a7e02ab46a4df',
+                        token: api_key,
                         utils: {
                             longpoll: true,
                             uploader: true
@@ -361,17 +571,17 @@ bot.command('Хочу посмотреть открытые вакансии!', 
                                         button: 'act1',
                                     }),
                                 },
-                                color: 'primary',
+                                color: 'positive',
                             }),
                             Markup.button({
                                 action: {
                                     type: 'text',
-                                    label: 'Я пас.',
+                                    label: 'Назад к открытым вакансиям',
                                     payload: JSON.stringify({
                                         button: 'act2',
                                     }),
                                 },
-                                color: 'negative',
+                                color: 'primary',
                             }),
                         ], { columns: 1 }).oneTime());
                 });
