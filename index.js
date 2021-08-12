@@ -1,21 +1,10 @@
 const loadJsonFile = require('load-json-file');
-const path = require('path')
-const fetch = require('node-fetch');
 const jsdom = require("jsdom");
-const archiver = require('archiver');
 const iconv = require('iconv-lite');
 const fs = require('fs');
-var request = require('request');
-var FormData = require('form-data');
 const easyvk = require('easyvk');
-const cheerio = require('cheerio')
-const rest = require('restler');
-const parser = require('node-html-parser');
-const $ = require("jquery");
 const Readable = require('stream').Readable;
 const nodemailer = require('nodemailer')
-
-const HTML = require('html-parse-stringify')
 
 const vacancies = require('./vacancies.json');
 const api_key = '1563de6cd1bea098b9af47d563ea8963dabb65c8441a7e786912f1d1452825906f57c545a7e02ab46a4df'
@@ -25,7 +14,6 @@ const Markup = require('node-vk-bot-api/lib/markup');
 const Session = require('node-vk-bot-api/lib/session');
 const Scene = require('node-vk-bot-api/lib/scene');
 const Stage = require('node-vk-bot-api/lib/stage');
-const { format } = require('path');
 
 const bot = new VkBot(api_key);
 
@@ -38,7 +26,6 @@ const MANAGER_ID = 392828943;
 const scene = new Scene('deal',
     (ctx) => {
         ctx.scene.next();
-        //    console.log(ctx.message.from_id)
         ctx.session.from_id = ctx.message.from_id.toString()
         ctx.reply('Отлично! Оставь контактную информацию, чтобы мы могли с тобой связаться. Сначала напиши сюда своё ФИО.');
     },
@@ -101,7 +88,6 @@ bot.command('Я в деле!', (ctx) => {
 
 const scene_tz = new Scene('want_tz',
     (ctx) => {
-        ctx.reply('Окей, держи тестовое задание. Его нужно сделать за 5 рабочий дней. Дерзай! Буду ждать!');
 
         let obj = loadJsonFile.sync('./vacancies.json');
 
@@ -117,15 +103,90 @@ const scene_tz = new Scene('want_tz',
             }
         }
 
-        for (let k = 0; k < filesArray.length; k++) {
-            let buff = Buffer.from(filesArray[k].content.toString(), 'base64')
+        if (filesArray.length == 0) {
+            ctx.reply('В выгрузке пока нет файла с ТЗ для этой вакансии 😔', null, Markup
+                .keyboard([
+                    Markup.button({
+                        action: {
+                            type: 'text',
+                            label: 'Начать',
+                            payload: JSON.stringify({
+                                button: 'act1',
+                            }),
+                        },
+                        color: 'positive',
+                    }),
+                ], { columns: 1 }).oneTime());
+            ctx.scene.leave();
+        } else {
+            ctx.reply('Окей, держи тестовое задание. Его нужно сделать за 5 рабочий дней. Дерзай! Буду ждать!');
+            for (let k = 0; k < filesArray.length; k++) {
+                let buff = Buffer.from(filesArray[k].content.toString(), 'base64')
 
-            var s = new Readable()
+                var s = new Readable()
 
-            s.push(buff)
-            s.push(null)
+                s.push(buff)
+                s.push(null)
 
-            s.pipe(fs.createWriteStream(filesArray[k].file_name.toString()));
+                s.pipe(fs.createWriteStream(filesArray[k].file_name.toString()));
+
+                easyvk({
+                    token: api_key,
+                    utils: {
+                        longpoll: true
+                    }
+                }).then(async vk => {
+
+                    const lpSettings = {
+                        forGetLongPollServer: {
+                            lp_version: 3, // Изменяем версию LongPoll, в EasyVK используется версия 2
+                            need_pts: 1
+                        },
+                        forLongPollServer: {
+                            wait: 15 // Ждем ответа 15 секунд
+                        }
+                    }
+
+                    async function uploadServerGet(peer_id) {
+                        return vk.call("docs.getMessagesUploadServer", {
+                            type: "doc",
+                            peer_id: peer_id,
+                        })
+                    }
+
+                    async function saveDoc(user, random, peer_id, message, attachment) {
+                        return vk.call("messages.send", {
+                            user_id: user,
+                            random_id: random,
+                            peer_id: user,
+                            message: message,
+                            attachment: attachment
+                        })
+                    }
+
+                    let serv = await uploadServerGet(ctx.session.from_id)
+                    let server = vk.uploader;
+                    let url = serv.upload_url
+
+                    server.upload({
+                        getUrlMethod: "docs.getMessagesUploadServer",
+                        getUrlParams: {
+                            type: "doc",
+                            peer_id: ctx.session.from_id,
+                        },
+                        saveMethod: "docs.save",
+                        saveParams: {
+                            file: url,
+                            title: filesArray[k].file_name,
+                            tags: "no_tags",
+                            return_tags: 0
+                        },
+                        file: filesArray[k].file_name,
+                    }).then(async res => {
+                        await saveDoc(ctx.session.from_id, easyvk.randomId(), ctx.session.from_id, "Тестовое задание на позицию '" + ctx.session.choosen_name + "'", "doc" + res.doc.url.split("doc")[1].split('?')[0].toString())
+                    })
+                })
+            }
 
             easyvk({
                 token: api_key,
@@ -144,116 +205,57 @@ const scene_tz = new Scene('want_tz',
                     }
                 }
 
-                async function uploadServerGet(peer_id) {
-                    return vk.call("docs.getMessagesUploadServer", {
-                        type: "doc",
-                        peer_id: peer_id,
-                    })
-                }
+                const random = (min, max) => Math.floor(Math.random() * (max - min)) + min;
 
-                async function saveDoc(user, random, peer_id, message, attachment) {
-                    return vk.call("messages.send", {
-                        user_id: user,
-                        random_id: random,
-                        peer_id: user,
-                        message: message,
-                        attachment: attachment
-                    })
-                }
+                await vk.call("messages.send", {
+                    user_id: MANAGER_ID,
+                    random_id: random(1, 100000),
+                    peer_id: MANAGER_ID,
+                    message: "Пользователь https://vk.com/id" + ctx.session.from_id + " оставил заявку по вакансии '" + ctx.session.choosen_name
+                        + "'. Информация:\nФИО: " + ctx.session.fullname + "\nE-mail: " + ctx.session.email + "\nТелефон: " + ctx.session.number.toString() + "\nСопроводительная информация: "
+                        + ctx.session.description + "\nПользователю было выслано тестовое задание."
+                })
 
-                let serv = await uploadServerGet(ctx.session.from_id)
-                let server = vk.uploader;
-                let url = serv.upload_url
-
-                server.upload({
-                    getUrlMethod: "docs.getMessagesUploadServer",
-                    getUrlParams: {
-                        type: "doc",
-                        peer_id: ctx.session.from_id,
+                let transporter = nodemailer.createTransport({
+                    service: 'gmail',
+                    auth: {
+                        user: 'vladislav0161@gmail.com',
+                        pass: 'Vladik123',
                     },
-                    saveMethod: "docs.save",
-                    saveParams: {
-                        file: url,
-                        title: filesArray[k].file_name,
-                        tags: "no_tags",
-                        return_tags: 0
-                    },
-                    file: filesArray[k].file_name,
-                }).then(async res => {
-                    await saveDoc(ctx.session.from_id, easyvk.randomId(), ctx.session.from_id, "Тестовое задание на позицию '" + ctx.session.choosen_name + "'", "doc" + res.doc.url.split("doc")[1].split('?')[0].toString())
+                })
+
+                await transporter.sendMail({
+                    from: '"Чат-бот "Вакансии" <vladislav0161@gmail.com>',
+                    to: 'vladislav0151@bk.ru',
+                    subject: 'Заявка по вакансии "' + ctx.session.choosen_name + '"',
+                    text: "Пользователь https://vk.com/id" + ctx.session.from_id + " оставил заявку по вакансии '" + ctx.session.choosen_name
+                        + "'. Информация:\nФИО: " + ctx.session.fullname + "\nE-mail: " + ctx.session.email + "\nТелефон: " + ctx.session.number.toString() + "\nСопроводительная информация: "
+                        + ctx.session.description + "\nПользователю было выслано тестовое задание.",
+                    html:
+                        '<div>Пользователь <strong>https://vk.com/id' + ctx.session.from_id + ' </strong>оставил заявку по вакансии <i>' + ctx.session.choosen_name + '</i>. Информация:</div></br>' +
+                        '<div> <strong>ФИО: </strong>' + ctx.session.fullname + '</div></br>' +
+                        '<div> <strong>E-mail: </strong>' + ctx.session.email + '</div></br>' +
+                        '<div> <strong>Номер телефона: </strong>' + ctx.session.number.toString() + '</div></br>' +
+                        '<div> <strong>Сопроводительная информация: </strong>' + ctx.session.description + '</div></br>' +
+                        '<div>Пользователю было выслано тестовое задание.</strong> </div>'
                 })
             })
+
+            ctx.reply('Если хочешь поговорить ещё, нажми на кнопку "Начать" или напиши "начать" в чат.', null, Markup
+                .keyboard([
+                    Markup.button({
+                        action: {
+                            type: 'text',
+                            label: 'Начать',
+                            payload: JSON.stringify({
+                                button: 'act1',
+                            }),
+                        },
+                        color: 'positive',
+                    }),
+                ], { columns: 1 }).oneTime());
+            ctx.scene.leave();
         }
-
-        easyvk({
-            token: api_key,
-            utils: {
-                longpoll: true
-            }
-        }).then(async vk => {
-
-            const lpSettings = {
-                forGetLongPollServer: {
-                    lp_version: 3, // Изменяем версию LongPoll, в EasyVK используется версия 2
-                    need_pts: 1
-                },
-                forLongPollServer: {
-                    wait: 15 // Ждем ответа 15 секунд
-                }
-            }
-
-            const random = (min, max) => Math.floor(Math.random() * (max - min)) + min;
-
-            await vk.call("messages.send", {
-                user_id: MANAGER_ID,
-                random_id: random(1, 100000),
-                peer_id: MANAGER_ID,
-                message: "Пользователь https://vk.com/id" + ctx.session.from_id + " оставил заявку по вакансии '" + ctx.session.choosen_name
-                    + "'. Информация:\nФИО: " + ctx.session.fullname + "\nE-mail: " + ctx.session.email + "\nТелефон: " + ctx.session.number.toString() + "\nСопроводительная информация: "
-                    + ctx.session.description + "\nПользователю было выслано тестовое задание."
-            })
-
-            // let testEmailAccount = await nodemailer.createTestAccount()
-
-            let transporter = nodemailer.createTransport({
-                service: 'gmail',
-                auth: {
-                    user: 'vladislav0161@gmail.com',
-                    pass: 'Vladik123',
-                },
-            })
-
-            await transporter.sendMail({
-                from: '"Чат-бот "Вакансии" <vladislav0161@gmail.com>',
-                to: 'vladislav0151@bk.ru',
-                subject: 'Заявка по вакансии "' + ctx.session.choosen_name + '"',
-                text: "Пользователь https://vk.com/id" + ctx.session.from_id + " оставил заявку по вакансии '" + ctx.session.choosen_name
-                    + "'. Информация:\nФИО: " + ctx.session.fullname + "\nE-mail: " + ctx.session.email + "\nТелефон: " + ctx.session.number.toString() + "\nСопроводительная информация: "
-                    + ctx.session.description + "\nПользователю было выслано тестовое задание.",
-                html:
-                    '<div>Пользователь <strong>https://vk.com/id' + ctx.session.from_id + ' </strong>оставил заявку по вакансии <i>' + ctx.session.choosen_name + '</i>. Информация:</div></br>' +
-                    '<div> <strong>ФИО: </strong>' + ctx.session.fullname + '</div></br>' +
-                    '<div> <strong>E-mail: </strong>' + ctx.session.email + '</div></br>' +
-                    '<div> <strong>Номер телефона: </strong>' + ctx.session.number.toString() + '</div></br>' +
-                    '<div> <strong>Сопроводительная информация: </strong>' + ctx.session.description + '</div></br>' +
-                    '<div>Пользователю было выслано тестовое задание.</strong> </div>'
-            })
-        })
-
-        ctx.reply('Если хочешь поговорить ещё, нажми на кнопку "Начать" или напиши "начать" в чат.', null, Markup
-            .keyboard([
-                Markup.button({
-                    action: {
-                        type: 'text',
-                        label: 'Начать',
-                        payload: JSON.stringify({
-                            button: 'act1',
-                        }),
-                    },
-                    color: 'positive',
-                }),
-            ], { columns: 1 }).oneTime());
-        ctx.scene.leave();
     }
 );
 
@@ -380,6 +382,7 @@ const scene_manager = new Scene('manager',
         }
     },
 );
+
 const stage_manager = new Stage(scene_manager);
 bot.use(stage_manager.middleware());
 
@@ -419,7 +422,6 @@ bot.command(['Я пас.', 'Назад к вакансиям кадрового 
             )
 
         }
-        console.log(obj[i].name)
     }
 
     varArr.push(
@@ -437,7 +439,6 @@ bot.command(['Я пас.', 'Назад к вакансиям кадрового 
 
     for (let i = 0; i < fullArr.length; i++) {
         bot.command(fullArr[i].name.toString(), async ctx => {
-            // let EEE = "";
             try {
 
                 let IF_HTML = false;
@@ -449,8 +450,6 @@ bot.command(['Я пас.', 'Назад к вакансиям кадрового 
                         HTML_POS = q;
                     }
                 }
-
-                console.log(IF_HTML, HTML_POS)
 
                 if (IF_HTML) {
                     let buff = Buffer.from(fullArr[i].files[HTML_POS].content.toString(), 'base64');
@@ -465,9 +464,7 @@ bot.command(['Я пас.', 'Назад к вакансиям кадрового 
                         span.innerHTML = output;
 
                         span.innerHTML = span.innerHTML.replace(/\n{2,}/g, "\n\n");
-                        //span.innerHTML = span.innerHTML.replace(/;/g, ";\n");
 
-                        //span.innerHTML = span.innerHTML.replace(/\s{2,}/g, " ");
                         span.innerHTML = span.innerHTML.replace(/\n\s/g, "\n");
 
                         let arr = span.innerHTML.split('');
@@ -578,9 +575,7 @@ bot.command(['Хочу посмотреть открытые вакансии!',
                     color: 'primary', // цвет текста
                 })
             )
-
         }
-        console.log(obj[i].name)
     }
 
     varArr.push(
@@ -611,7 +606,6 @@ bot.command(['Хочу посмотреть открытые вакансии!',
 
     for (let i = 0; i < fullArr.length; i++) {
         bot.command(fullArr[i].name.toString(), async ctx => {
-            // let EEE = "";
             try {
 
                 let IF_HTML = false;
@@ -623,8 +617,6 @@ bot.command(['Хочу посмотреть открытые вакансии!',
                         HTML_POS = q;
                     }
                 }
-
-                console.log(IF_HTML, HTML_POS)
 
                 if (IF_HTML) {
                     let buff = Buffer.from(fullArr[i].files[HTML_POS].content.toString(), 'base64');
@@ -730,7 +722,6 @@ bot.command(['Хочу посмотреть открытые вакансии!',
 
 bot.command('Не хочу', async (ctx) => {
     await ctx.reply('Отлично пообщались! Удачного поиска работы.');
-
     try {
         easyvk({
             token: api_key,
