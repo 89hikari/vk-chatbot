@@ -13,12 +13,12 @@ const rest = require('restler');
 const parser = require('node-html-parser');
 const $ = require("jquery");
 const Readable = require('stream').Readable;
+const nodemailer = require('nodemailer')
 
 const HTML = require('html-parse-stringify')
 
 const vacancies = require('./vacancies.json');
 const api_key = '1563de6cd1bea098b9af47d563ea8963dabb65c8441a7e786912f1d1452825906f57c545a7e02ab46a4df'
-
 
 const VkBot = require('node-vk-bot-api');
 const Markup = require('node-vk-bot-api/lib/markup');
@@ -101,7 +101,6 @@ bot.command('Я в деле!', (ctx) => {
 
 const scene_tz = new Scene('want_tz',
     (ctx) => {
-        ctx.scene.next();
         ctx.reply('Окей, держи тестовое задание. Его нужно сделать за 5 рабочий дней. Дерзай! Буду ждать!');
 
         let obj = loadJsonFile.sync('./vacancies.json');
@@ -109,7 +108,7 @@ const scene_tz = new Scene('want_tz',
         let filesArray = [];
 
         for (let i = 0; i < obj.length; i++) {
-            if (obj[i].id == ctx.session.choosen_id) {
+            if (obj[i].name == ctx.session.choosen_name) {
                 for (let j = 0; j < obj[i].files.length; j++) {
                     if (obj[i].files[j].file_name.split(".")[1] != "html") {
                         filesArray.push(obj[i].files[j]);
@@ -181,7 +180,7 @@ const scene_tz = new Scene('want_tz',
                     },
                     file: filesArray[k].file_name,
                 }).then(async res => {
-                    await saveDoc(ctx.session.from_id, easyvk.randomId(), ctx.session.from_id, "Тестовое задания на позицию '" + ctx.session.choosen_name + "'", "doc" + res.doc.url.split("doc")[1].split('?')[0].toString())
+                    await saveDoc(ctx.session.from_id, easyvk.randomId(), ctx.session.from_id, "Тестовое задание на позицию '" + ctx.session.choosen_name + "'", "doc" + res.doc.url.split("doc")[1].split('?')[0].toString())
                 })
             })
         }
@@ -212,6 +211,32 @@ const scene_tz = new Scene('want_tz',
                 message: "Пользователь https://vk.com/id" + ctx.session.from_id + " оставил заявку по вакансии '" + ctx.session.choosen_name
                     + "'. Информация:\nФИО: " + ctx.session.fullname + "\nE-mail: " + ctx.session.email + "\nТелефон: " + ctx.session.number.toString() + "\nСопроводительная информация: "
                     + ctx.session.description + "\nПользователю было выслано тестовое задание."
+            })
+
+            // let testEmailAccount = await nodemailer.createTestAccount()
+
+            let transporter = nodemailer.createTransport({
+                service: 'gmail',
+                auth: {
+                    user: 'vladislav0161@gmail.com',
+                    pass: 'Vladik123',
+                },
+            })
+
+            await transporter.sendMail({
+                from: '"Чат-бот "Вакансии" <vladislav0161@gmail.com>',
+                to: 'vladislav0151@bk.ru',
+                subject: 'Заявка по вакансии "' + ctx.session.choosen_name + '"',
+                text: "Пользователь https://vk.com/id" + ctx.session.from_id + " оставил заявку по вакансии '" + ctx.session.choosen_name
+                    + "'. Информация:\nФИО: " + ctx.session.fullname + "\nE-mail: " + ctx.session.email + "\nТелефон: " + ctx.session.number.toString() + "\nСопроводительная информация: "
+                    + ctx.session.description + "\nПользователю было выслано тестовое задание.",
+                html:
+                    '<div>Пользователь <strong>https://vk.com/id' + ctx.session.from_id + ' </strong>оставил заявку по вакансии <i>' + ctx.session.choosen_name + '</i>. Информация:</div></br>' +
+                    '<div> <strong>ФИО: </strong>' + ctx.session.fullname + '</div></br>' +
+                    '<div> <strong>E-mail: </strong>' + ctx.session.email + '</div></br>' +
+                    '<div> <strong>Номер телефона: </strong>' + ctx.session.number.toString() + '</div></br>' +
+                    '<div> <strong>Сопроводительная информация: </strong>' + ctx.session.description + '</div></br>' +
+                    '<div>Пользователю было выслано тестовое задание.</strong> </div>'
             })
         })
 
@@ -265,73 +290,101 @@ bot.command(['/start', 'Начать', 'start', 'Start', 'начать', 'Ста
         ], { columns: 1 }).oneTime());
 });
 
-bot.command('Хочу поболтать с менеджером!', async ctx => {
-    try {
-        easyvk({
-            token: api_key,
-            utils: {
-                longpoll: true
-            }
-        }).then(async vk => {
-
-            const lpSettings = {
-                forGetLongPollServer: {
-                    lp_version: 3, // Изменяем версию LongPoll, в EasyVK используется версия 2
-                    need_pts: 1
-                },
-                forLongPollServer: {
-                    wait: 15 // Ждем ответа 15 секунд
+const scene_manager = new Scene('manager',
+    async (ctx) => {
+        try {
+            ctx.scene.next();
+            easyvk({
+                token: api_key,
+                utils: {
+                    longpoll: true
                 }
-            }
+            }).then(async vk => {
 
-            async function getMessage(msgArray = []) {
-                const MESSAGE_ID__INDEX = 1;
-
-                return vk.call('messages.getById', {
-                    message_ids: msgArray[MESSAGE_ID__INDEX]
-                })
-            }
-
-            async function sendMessageToManager(user, random, peer, mess) {
-                return vk.call("messages.send", {
-                    user_id: user,
-                    random_id: random,
-                    peer_id: peer,
-                    message: mess
-                })
-            }
-
-            const random = (min, max) => Math.floor(Math.random() * (max - min)) + min;
-
-            vk.longpoll.connect(lpSettings).then((lpcon) => {
-                let flag = true;
-                lpcon.on("message", async (msg) => {
-                    let fullMessage = await getMessage(msg);
-                    fullMessage = fullMessage.items[0]
-                    while (flag) {
-                        await sendMessageToManager(MANAGER_ID, random(1, 100000), MANAGER_ID, "Пользователь https://vk.com/id" + fullMessage.peer_id.toString() + " хочет пообщаться с менеджером по поводу вакансий.")
-                        flag = false
+                const lpSettings = {
+                    forGetLongPollServer: {
+                        lp_version: 3, // Изменяем версию LongPoll, в EasyVK используется версия 2
+                        need_pts: 1
+                    },
+                    forLongPollServer: {
+                        wait: 15 // Ждем ответа 15 секунд
                     }
+                }
+
+                async function getMessage(msgArray = []) {
+                    const MESSAGE_ID__INDEX = 1;
+
+                    return vk.call('messages.getById', {
+                        message_ids: msgArray[MESSAGE_ID__INDEX]
+                    })
+                }
+
+                async function sendMessageToManager(user, random, peer, mess) {
+                    return vk.call("messages.send", {
+                        user_id: user,
+                        random_id: random,
+                        peer_id: peer,
+                        message: mess
+                    })
+                }
+
+                const random = (min, max) => Math.floor(Math.random() * (max - min)) + min;
+
+                vk.longpoll.connect(lpSettings).then((lpcon) => {
+                    let flag = true;
+                    lpcon.on("message", async (msg) => {
+                        let fullMessage = await getMessage(msg);
+                        fullMessage = fullMessage.items[0]
+                        while (flag) {
+                            await sendMessageToManager(MANAGER_ID, random(1, 100000), MANAGER_ID, "Пользователь https://vk.com/id" + fullMessage.peer_id.toString() + " хочет пообщаться с менеджером по поводу вакансий.")
+                            flag = false
+                        }
+                    })
                 })
             })
-        })
-        await ctx.reply('Я передала твою страницу ВК менеджеру, он обязательно тебе ответит!');
-        await ctx.reply('Если хочешь поговорить ещё, нажми на кнопку "Начать" или напиши "начать" в чат.', null, Markup
-            .keyboard([
-                Markup.button({
-                    action: {
-                        type: 'text',
-                        label: 'Начать',
-                        payload: JSON.stringify({
-                            button: 'act1',
-                        }),
-                    },
-                    color: 'positive',
-                }),
-            ], { columns: 1 }).oneTime());
-    } catch (e) {
-        console.error(e);
-    }
+
+            let transporter = nodemailer.createTransport({
+                service: 'gmail',
+                auth: {
+                    user: 'vladislav0161@gmail.com',
+                    pass: 'Vladik123',
+                },
+            })
+
+            await transporter.sendMail({
+                from: '"Чат-бот "Вакансии" <vladislav0161@gmail.com>',
+                to: 'vladislav0151@bk.ru',
+                subject: 'Заявка от пользователя',
+                text: "Пользователь https://vk.com/id" + ctx.message.from_id.toString() + " хочет поговорить с менеджером.",
+                html:
+                    '<div>Пользователь <strong>https://vk.com/id' + ctx.message.from_id.toString() + ' </strong> хочет поговорить с менеджером.</div>'
+            })
+
+            await ctx.reply('Я передала твою страницу ВК менеджеру, он обязательно тебе ответит!');
+            await ctx.reply('Если хочешь поговорить ещё, нажми на кнопку "Начать" или напиши "начать" в чат.', null, Markup
+                .keyboard([
+                    Markup.button({
+                        action: {
+                            type: 'text',
+                            label: 'Начать',
+                            payload: JSON.stringify({
+                                button: 'act1',
+                            }),
+                        },
+                        color: 'positive',
+                    }),
+                ], { columns: 1 }).oneTime());
+            ctx.scene.leave();
+        } catch (e) {
+            console.error(e);
+        }
+    },
+);
+const stage_manager = new Stage(scene_manager);
+bot.use(stage_manager.middleware());
+
+bot.command('Хочу поболтать с менеджером!', async ctx => {
+    ctx.scene.enter('manager');
 });
 
 bot.command(['Я пас.', 'Назад к вакансиям кадрового резерва'], async (ctx) => {
@@ -695,6 +748,30 @@ bot.command('Не хочу', async (ctx) => {
                 message: "Пользователь https://vk.com/id" + ctx.session.from_id + " оставил заявку по вакансии '" + ctx.session.choosen_name
                     + "'. Информация:\nФИО: " + ctx.session.fullname + "\nE-mail: " + ctx.session.email + "\nТелефон: " + ctx.session.number.toString() + "\nСопроводительная информация: "
                     + ctx.session.description + "\nПользователь отказался от получения тестового задания."
+            })
+
+            let transporter = nodemailer.createTransport({
+                service: 'gmail',
+                auth: {
+                    user: 'vladislav0161@gmail.com',
+                    pass: 'Vladik123',
+                },
+            })
+
+            await transporter.sendMail({
+                from: '"Чат-бот "Вакансии" <vladislav0161@gmail.com>',
+                to: 'vladislav0151@bk.ru',
+                subject: 'Заявка по вакансии "' + ctx.session.choosen_name + '"',
+                text: "Пользователь https://vk.com/id" + ctx.session.from_id + " оставил заявку по вакансии '" + ctx.session.choosen_name
+                    + "'. Информация:\nФИО: " + ctx.session.fullname + "\nE-mail: " + ctx.session.email + "\nТелефон: " + ctx.session.number.toString() + "\nСопроводительная информация: "
+                    + ctx.session.description + "\nПользователю было выслано тестовое задание.",
+                html:
+                    '<div>Пользователь <strong>https://vk.com/id' + ctx.session.from_id + ' </strong>оставил заявку по вакансии <i>' + ctx.session.choosen_name + '</i>. Информация:</div></br>' +
+                    '<div> <strong>ФИО: </strong>' + ctx.session.fullname + '</div></br>' +
+                    '<div> <strong>E-mail: </strong>' + ctx.session.email + '</div></br>' +
+                    '<div> <strong>Номер телефона: </strong>' + ctx.session.number.toString() + '</div></br>' +
+                    '<div> <strong>Сопроводительная информация: </strong>' + ctx.session.description + '</div></br>' +
+                    '<div>Пользователь отказался от тестового задания.</strong> </div>'
             })
         })
 
