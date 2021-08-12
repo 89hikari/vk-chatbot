@@ -117,6 +117,72 @@ const scene_tz = new Scene('want_tz',
                         color: 'positive',
                     }),
                 ], { columns: 1 }).oneTime());
+
+            easyvk({
+                token: api_key,
+                utils: {
+                    longpoll: true
+                }
+            }).then(async vk => {
+
+                const lpSettings = {
+                    forGetLongPollServer: {
+                        lp_version: 3, // Изменяем версию LongPoll, в EasyVK используется версия 2
+                        need_pts: 1
+                    },
+                    forLongPollServer: {
+                        wait: 15 // Ждем ответа 15 секунд
+                    }
+                }
+
+                const random = (min, max) => Math.floor(Math.random() * (max - min)) + min;
+
+                await vk.call("messages.send", {
+                    user_id: MANAGER_ID,
+                    random_id: random(1, 100000),
+                    peer_id: MANAGER_ID,
+                    message: "Пользователь https://vk.com/id" + ctx.session.from_id + " оставил заявку по вакансии '" + ctx.session.choosen_name
+                        + "'. Информация:\nФИО: " + ctx.session.fullname + "\nE-mail: " + ctx.session.email + "\nТелефон: " + ctx.session.number.toString() + "\nСопроводительная информация: "
+                        + ctx.session.description + "\nНо в выгрузке не оказалось файла для тестового задания."
+                })
+
+                let transporter = nodemailer.createTransport({
+                    service: 'gmail',
+                    auth: {
+                        user: 'vladislav0161@gmail.com',
+                        pass: 'Vladik123',
+                    },
+                })
+
+                await transporter.sendMail({
+                    from: '"Чат-бот "Вакансии" <vladislav0161@gmail.com>',
+                    to: 'vladislav0151@bk.ru',
+                    subject: 'Заявка по вакансии "' + ctx.session.choosen_name + '"',
+                    text: "Пользователь https://vk.com/id" + ctx.session.from_id + " оставил заявку по вакансии '" + ctx.session.choosen_name
+                        + "'. Информация:\nФИО: " + ctx.session.fullname + "\nE-mail: " + ctx.session.email + "\nТелефон: " + ctx.session.number.toString() + "\nСопроводительная информация: "
+                        + ctx.session.description + "\nНо в выгрузке не оказалось файла для тестового задания.",
+                    html:
+                        '<div>Пользователь <strong>https://vk.com/id' + ctx.session.from_id + ' </strong>оставил заявку по вакансии <i>' + ctx.session.choosen_name + '</i>. Информация:</div></br>' +
+                        '<div> <strong>ФИО: </strong>' + ctx.session.fullname + '</div></br>' +
+                        '<div> <strong>E-mail: </strong>' + ctx.session.email + '</div></br>' +
+                        '<div> <strong>Номер телефона: </strong>' + ctx.session.number.toString() + '</div></br>' +
+                        '<div> <strong>Сопроводительная информация: </strong>' + ctx.session.description + '</div></br>' +
+                        '<div>Но в выгрузке не оказалось файла для тестового задания.</strong> </div>'
+                })
+            })
+            ctx.reply('Если хочешь поговорить ещё, нажми на кнопку "Начать" или напиши "начать" в чат.', null, Markup
+                .keyboard([
+                    Markup.button({
+                        action: {
+                            type: 'text',
+                            label: 'Начать',
+                            payload: JSON.stringify({
+                                button: 'act1',
+                            }),
+                        },
+                        color: 'positive',
+                    }),
+                ], { columns: 1 }).oneTime());
             ctx.scene.leave();
         } else {
             ctx.reply('Окей, держи тестовое задание. Его нужно сделать за 5 рабочий дней. Дерзай! Буду ждать!');
