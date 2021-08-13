@@ -30,7 +30,7 @@ setInterval(function() {
     getter = input_file[0].getter;
     service = input_file[0].service;
     obj = loadJsonFile.sync(input_file[0].vacancies);
-}, 2000);
+}, 300000);
 
 const api_key = token
 const bot = new VkBot(api_key);
