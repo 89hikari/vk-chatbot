@@ -1,4 +1,3 @@
-To set up a project put your API key into 3rd line in index.js, then execute:
-npm i
+To set up a project: npm i
 
-To fire: node .\index.js
+To fire up: node index.js <longppoll_api_key> <email-sender> <password_of_sender> <email-getter> <mail_service>
