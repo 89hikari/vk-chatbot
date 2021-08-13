@@ -22,14 +22,18 @@ let password= input_file[0].password
 let getter = input_file[0].getter
 let service = input_file[0].service
 let obj = loadJsonFile.sync(input_file[0].vacancies);
+let MANAGER_ID = Number(input_file[0].manager_id);
+console.log("Входные данные загружены");
 
 setInterval(function() {
+    console.log("Входные данные были обновлены");
     token = input_file[0].token;
     sender = input_file[0].sender;
     password= input_file[0].password;
     getter = input_file[0].getter;
     service = input_file[0].service;
     obj = loadJsonFile.sync(input_file[0].vacancies);
+    MANAGER_ID = Number(input_file[0].manager_id);
 }, 300000);
 
 const api_key = token
@@ -39,7 +43,6 @@ let CHOOSEN_ID = 0;
 let CHOOSEN_NAME = "";
 
 // айди ВК страницы менеджера. Можно сделать чтобы их несколько было. Это цифры в ссылке на страницу, либо можно узнать в настройках аккаунта.
-const MANAGER_ID = 392828943;
 
 const scene = new Scene('deal',
     (ctx) => {
@@ -185,6 +188,7 @@ const scene_tz = new Scene('want_tz',
                         '<div> <strong>Сопроводительная информация: </strong>' + ctx.session.description + '</div></br>' +
                         '<div>Но в выгрузке не оказалось файла для тестового задания.</strong> </div>'
                 })
+                console.log("Отправлено письмо на почту, пользователь указал свои данные для обратной связи. В выгрузке нет тестового задания.");
             })
             ctx.reply('Если хочешь поговорить ещё, нажми на кнопку "Начать" или напиши "начать" в чат.', null, Markup
                 .keyboard([
@@ -321,6 +325,7 @@ const scene_tz = new Scene('want_tz',
                         '<div> <strong>Сопроводительная информация: </strong>' + ctx.session.description + '</div></br>' +
                         '<div>Пользователю было выслано тестовое задание.</strong> </div>'
                 })
+                console.log("Отправлено письмо на почту, пользователь указал свои данные для обратной связи.");
             })
 
             ctx.reply('Если хочешь поговорить ещё, нажми на кнопку "Начать" или напиши "начать" в чат.', null, Markup
@@ -442,6 +447,7 @@ const scene_manager = new Scene('manager',
                 html:
                     '<div>Пользователь <strong>https://vk.com/id' + ctx.message.from_id.toString() + ' </strong> хочет поговорить с менеджером.</div>'
             })
+            console.log("Отправлено письмо на почту, пользователь хочет поговорить с менеджером.");
 
             await ctx.reply('Я передала твою страницу ВК менеджеру, он обязательно тебе ответит!');
             await ctx.reply('Если хочешь поговорить ещё, нажми на кнопку "Начать" или напиши "начать" в чат.', null, Markup
@@ -842,6 +848,7 @@ bot.command('Не хочу', async (ctx) => {
                     '<div> <strong>Сопроводительная информация: </strong>' + ctx.session.description + '</div></br>' +
                     '<div>Пользователь отказался от тестового задания.</strong> </div>'
             })
+            console.log("Отправлено письмо на почту, пользователь указал свои данные для обратной связи.");
         })
 
         await ctx.reply('Если хочешь пообщаться ещё, напиши "Начать", либо нажми на кнопку.', null, Markup
@@ -878,13 +885,5 @@ bot.command(['/stop', 'Stop', 'stop', 'Стоп', 'стоп'], async (ctx) => {
         ], { columns: 1 }).oneTime());
 })
 
-// app.use(bodyParser.json());
-
-// app.post('/', bot.webhookCallback);
-
-// app.listen(process.env.PORT || 3000, function () {
-//     console.log("Bot is working")
-//     bot.startPolling()
-// });
-
 bot.startPolling()
+console.log("Бот запущен");

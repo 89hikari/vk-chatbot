@@ -18,8 +18,10 @@
 
         "service": String,
 
-        "vacancies": Path (String)
+        "vacancies": Path (String),
+
+        "manager_id": Integer
 
     }
-    
+
 ]
