@@ -1,3 +1,5 @@
+const express = require('express');
+const bodyParser = require('body-parser');
 const loadJsonFile = require('load-json-file');
 const jsdom = require("jsdom");
 const iconv = require('iconv-lite');
@@ -15,6 +17,7 @@ const Session = require('node-vk-bot-api/lib/session');
 const Scene = require('node-vk-bot-api/lib/scene');
 const Stage = require('node-vk-bot-api/lib/stage');
 
+const app = express();
 const bot = new VkBot(api_key);
 
 let CHOOSEN_ID = 0;
@@ -397,14 +400,13 @@ const scene_manager = new Scene('manager',
                 }
 
                 const random = (min, max) => Math.floor(Math.random() * (max - min)) + min;
-
+                let flag = true;
                 vk.longpoll.connect(lpSettings).then((lpcon) => {
-                    let flag = true;
                     lpcon.on("message", async (msg) => {
                         let fullMessage = await getMessage(msg);
                         fullMessage = fullMessage.items[0]
                         while (flag) {
-                            await sendMessageToManager(MANAGER_ID, random(1, 100000), MANAGER_ID, "Пользователь https://vk.com/id" + fullMessage.peer_id.toString() + " хочет пообщаться с менеджером по поводу вакансий.")
+                            await sendMessageToManager(MANAGER_ID, easyvk.randomId(), MANAGER_ID, "Пользователь https://vk.com/id" + fullMessage.peer_id.toString() + " хочет пообщаться с менеджером по поводу вакансий.")
                             flag = false
                         }
                     })
@@ -866,4 +868,11 @@ bot.command(['/stop', 'Stop', 'stop', 'Стоп', 'стоп'], async (ctx) => {
         ], { columns: 1 }).oneTime());
 })
 
-bot.startPolling();
+app.use(bodyParser.json());
+
+app.post('/', bot.webhookCallback);
+
+app.listen(process.env.PORT || 3000, function () {
+    console.log("Bot is working")
+    bot.startPolling()
+});
