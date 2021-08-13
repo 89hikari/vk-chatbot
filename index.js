@@ -8,16 +8,31 @@ const easyvk = require('easyvk');
 const Readable = require('stream').Readable;
 const nodemailer = require('nodemailer')
 
-const vacancies = require('./vacancies.json');
-const api_key = process.argv[2]
-
 const VkBot = require('node-vk-bot-api');
 const Markup = require('node-vk-bot-api/lib/markup');
 const Session = require('node-vk-bot-api/lib/session');
 const Scene = require('node-vk-bot-api/lib/scene');
 const Stage = require('node-vk-bot-api/lib/stage');
 
-const app = express();
+let input_file = loadJsonFile.sync('./input_params.json');
+
+let token = input_file[0].token;
+let sender = input_file[0].sender;
+let password= input_file[0].password
+let getter = input_file[0].getter
+let service = input_file[0].service
+let obj = loadJsonFile.sync(input_file[0].vacancies);
+
+setInterval(function() {
+    token = input_file[0].token;
+    sender = input_file[0].sender;
+    password= input_file[0].password;
+    getter = input_file[0].getter;
+    service = input_file[0].service;
+    obj = loadJsonFile.sync(input_file[0].vacancies);
+}, 2000);
+
+const api_key = token
 const bot = new VkBot(api_key);
 
 let CHOOSEN_ID = 0;
@@ -92,8 +107,6 @@ bot.command('Я в деле!', (ctx) => {
 const scene_tz = new Scene('want_tz',
     (ctx) => {
 
-        let obj = loadJsonFile.sync('./vacancies.json');
-
         let filesArray = [];
 
         for (let i = 0; i < obj.length; i++) {
@@ -150,16 +163,16 @@ const scene_tz = new Scene('want_tz',
                 })
 
                 let transporter = nodemailer.createTransport({
-                    service: process.argv[6],
+                    service: service,
                     auth: {
-                        user: process.argv[3],
-                        pass: process.argv[4],
+                        user: sender,
+                        pass: password,
                     },
                 })
 
                 await transporter.sendMail({
-                    from: '"Чат-бот "Вакансии" <' + process.argv[3] + ">",
-                    to: process.argv[5],
+                    from: '"Чат-бот "Вакансии" <' + sender + ">",
+                    to: getter,
                     subject: 'Заявка по вакансии "' + ctx.session.choosen_name + '"',
                     text: "Пользователь https://vk.com/id" + ctx.session.from_id + " оставил заявку по вакансии '" + ctx.session.choosen_name
                         + "'. Информация:\nФИО: " + ctx.session.fullname + "\nE-mail: " + ctx.session.email + "\nТелефон: " + ctx.session.number.toString() + "\nСопроводительная информация: "
@@ -197,7 +210,7 @@ const scene_tz = new Scene('want_tz',
                 s.push(buff)
                 s.push(null)
 
-                s.pipe(fs.createWriteStream(filesArray[k].file_name.toString()));
+                s.pipe(fs.createWriteStream('files/' + filesArray[k].file_name.toString()));
 
                 easyvk({
                     token: api_key,
@@ -250,7 +263,7 @@ const scene_tz = new Scene('want_tz',
                             tags: "no_tags",
                             return_tags: 0
                         },
-                        file: filesArray[k].file_name,
+                        file: 'files/' + filesArray[k].file_name,
                     }).then(async res => {
                         await saveDoc(ctx.session.from_id, easyvk.randomId(), ctx.session.from_id, "Тестовое задание на позицию '" + ctx.session.choosen_name + "'", "doc" + res.doc.url.split("doc")[1].split('?')[0].toString())
                     })
@@ -286,16 +299,16 @@ const scene_tz = new Scene('want_tz',
                 })
 
                 let transporter = nodemailer.createTransport({
-                    service: process.argv[6],
+                    service: service,
                     auth: {
-                        user: process.argv[3],
-                        pass: process.argv[4],
+                        user: sender,
+                        pass: password,
                     },
                 })
 
                 await transporter.sendMail({
-                    from: '"Чат-бот "Вакансии" <' + process.argv[3] + ">",
-                    to: process.argv[5],
+                    from: '"Чат-бот "Вакансии" <' + sender + ">",
+                    to: getter,
                     subject: 'Заявка по вакансии "' + ctx.session.choosen_name + '"',
                     text: "Пользователь https://vk.com/id" + ctx.session.from_id + " оставил заявку по вакансии '" + ctx.session.choosen_name
                         + "'. Информация:\nФИО: " + ctx.session.fullname + "\nE-mail: " + ctx.session.email + "\nТелефон: " + ctx.session.number.toString() + "\nСопроводительная информация: "
@@ -414,16 +427,16 @@ const scene_manager = new Scene('manager',
             })
 
             let transporter = nodemailer.createTransport({
-                service: process.argv[6],
+                service: service,
                 auth: {
-                    user: process.argv[3],
-                    pass: process.argv[4],
+                    user: sender,
+                    pass: password,
                 },
             })
 
             await transporter.sendMail({
-                from: '"Чат-бот "Вакансии" <' + process.argv[3] + '>',
-                to: process.argv[5],
+                from: '"Чат-бот "Вакансии" <' + sender + '>',
+                to: getter,
                 subject: 'Заявка от пользователя',
                 text: "Пользователь https://vk.com/id" + ctx.message.from_id.toString() + " хочет поговорить с менеджером.",
                 html:
@@ -459,7 +472,6 @@ bot.command('Хочу поболтать с менеджером!', async ctx =>
 });
 
 bot.command(['Я пас.', 'Назад к вакансиям кадрового резерва'], async (ctx) => {
-    let obj = loadJsonFile.sync('./vacancies.json');
 
     let varArr = [];
 
@@ -522,9 +534,9 @@ bot.command(['Я пас.', 'Назад к вакансиям кадрового 
                 if (IF_HTML) {
                     let buff = Buffer.from(fullArr[i].files[HTML_POS].content.toString(), 'base64');
 
-                    fs.writeFile(fullArr[i].files[HTML_POS].file_name.toString(), buff, async function (error) {
+                    fs.writeFile('files/' + fullArr[i].files[HTML_POS].file_name.toString(), buff, async function (error) {
                         if (error) throw error; // если возникла ошибка
-                        let data = fs.readFileSync(fullArr[i].files[HTML_POS].file_name.toString(), "binary");
+                        let data = fs.readFileSync('files/' + fullArr[i].files[HTML_POS].file_name.toString(), "binary");
                         var output = iconv.decode(data, "windows-1251").toString();
 
                         var span = new jsdom.JSDOM().window.document.createElement('span');
@@ -615,8 +627,6 @@ bot.command(['Я пас.', 'Назад к вакансиям кадрового 
 
 
 bot.command(['Хочу посмотреть открытые вакансии!', 'Назад к открытым вакансиям'], async (ctx) => {
-    let obj = loadJsonFile.sync('./vacancies.json');
-
     let varArr = [];
 
     let fullArr = [];
@@ -689,9 +699,9 @@ bot.command(['Хочу посмотреть открытые вакансии!',
                 if (IF_HTML) {
                     let buff = Buffer.from(fullArr[i].files[HTML_POS].content.toString(), 'base64');
 
-                    fs.writeFile(fullArr[i].files[HTML_POS].file_name.toString(), buff, async function (error) {
+                    fs.writeFile('files/' + fullArr[i].files[HTML_POS].file_name.toString(), buff, async function (error) {
                         if (error) throw error; // если возникла ошибка
-                        let data = fs.readFileSync(fullArr[i].files[HTML_POS].file_name.toString(), "binary");
+                        let data = fs.readFileSync('files/' + fullArr[i].files[HTML_POS].file_name.toString(), "binary");
                         var output = iconv.decode(data, "windows-1251").toString();
 
                         var span = new jsdom.JSDOM().window.document.createElement('span');
@@ -810,16 +820,16 @@ bot.command('Не хочу', async (ctx) => {
             })
 
             let transporter = nodemailer.createTransport({
-                service: process.argv[6],
+                service: service,
                 auth: {
-                    user: process.argv[3],
-                    pass: process.argv[4],
+                    user: sender,
+                    pass: password,
                 },
             })
 
             await transporter.sendMail({
-                from: '"Чат-бот "Вакансии" <' + process.argv[3] + ">",
-                to: process.argv[5],
+                from: '"Чат-бот "Вакансии" <' + sender + ">",
+                to: getter,
                 subject: 'Заявка по вакансии "' + ctx.session.choosen_name + '"',
                 text: "Пользователь https://vk.com/id" + ctx.session.from_id + " оставил заявку по вакансии '" + ctx.session.choosen_name
                     + "'. Информация:\nФИО: " + ctx.session.fullname + "\nE-mail: " + ctx.session.email + "\nТелефон: " + ctx.session.number.toString() + "\nСопроводительная информация: "
@@ -868,11 +878,13 @@ bot.command(['/stop', 'Stop', 'stop', 'Стоп', 'стоп'], async (ctx) => {
         ], { columns: 1 }).oneTime());
 })
 
-app.use(bodyParser.json());
+// app.use(bodyParser.json());
 
-app.post('/', bot.webhookCallback);
+// app.post('/', bot.webhookCallback);
 
-app.listen(process.env.PORT || 3000, function () {
-    console.log("Bot is working")
-    bot.startPolling()
-});
+// app.listen(process.env.PORT || 3000, function () {
+//     console.log("Bot is working")
+//     bot.startPolling()
+// });
+
+bot.startPolling()
