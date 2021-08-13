@@ -7,7 +7,7 @@ const Readable = require('stream').Readable;
 const nodemailer = require('nodemailer')
 
 const vacancies = require('./vacancies.json');
-const api_key = '1563de6cd1bea098b9af47d563ea8963dabb65c8441a7e786912f1d1452825906f57c545a7e02ab46a4df'
+const api_key = process.argv[2]
 
 const VkBot = require('node-vk-bot-api');
 const Markup = require('node-vk-bot-api/lib/markup');
@@ -147,16 +147,16 @@ const scene_tz = new Scene('want_tz',
                 })
 
                 let transporter = nodemailer.createTransport({
-                    service: 'gmail',
+                    service: process.argv[6],
                     auth: {
-                        user: 'vladislav0161@gmail.com',
-                        pass: 'Vladik123',
+                        user: process.argv[3],
+                        pass: process.argv[4],
                     },
                 })
 
                 await transporter.sendMail({
-                    from: '"Чат-бот "Вакансии" <vladislav0161@gmail.com>',
-                    to: 'vladislav0151@bk.ru',
+                    from: '"Чат-бот "Вакансии" <' + process.argv[3] + ">",
+                    to: process.argv[5],
                     subject: 'Заявка по вакансии "' + ctx.session.choosen_name + '"',
                     text: "Пользователь https://vk.com/id" + ctx.session.from_id + " оставил заявку по вакансии '" + ctx.session.choosen_name
                         + "'. Информация:\nФИО: " + ctx.session.fullname + "\nE-mail: " + ctx.session.email + "\nТелефон: " + ctx.session.number.toString() + "\nСопроводительная информация: "
@@ -283,16 +283,16 @@ const scene_tz = new Scene('want_tz',
                 })
 
                 let transporter = nodemailer.createTransport({
-                    service: 'gmail',
+                    service: process.argv[6],
                     auth: {
-                        user: 'vladislav0161@gmail.com',
-                        pass: 'Vladik123',
+                        user: process.argv[3],
+                        pass: process.argv[4],
                     },
                 })
 
                 await transporter.sendMail({
-                    from: '"Чат-бот "Вакансии" <vladislav0161@gmail.com>',
-                    to: 'vladislav0151@bk.ru',
+                    from: '"Чат-бот "Вакансии" <' + process.argv[3] + ">",
+                    to: process.argv[5],
                     subject: 'Заявка по вакансии "' + ctx.session.choosen_name + '"',
                     text: "Пользователь https://vk.com/id" + ctx.session.from_id + " оставил заявку по вакансии '" + ctx.session.choosen_name
                         + "'. Информация:\nФИО: " + ctx.session.fullname + "\nE-mail: " + ctx.session.email + "\nТелефон: " + ctx.session.number.toString() + "\nСопроводительная информация: "
@@ -412,16 +412,16 @@ const scene_manager = new Scene('manager',
             })
 
             let transporter = nodemailer.createTransport({
-                service: 'gmail',
+                service: process.argv[6],
                 auth: {
-                    user: 'vladislav0161@gmail.com',
-                    pass: 'Vladik123',
+                    user: process.argv[3],
+                    pass: process.argv[4],
                 },
             })
 
             await transporter.sendMail({
-                from: '"Чат-бот "Вакансии" <vladislav0161@gmail.com>',
-                to: 'vladislav0151@bk.ru',
+                from: '"Чат-бот "Вакансии" <' + process.argv[3] + '>',
+                to: process.argv[5],
                 subject: 'Заявка от пользователя',
                 text: "Пользователь https://vk.com/id" + ctx.message.from_id.toString() + " хочет поговорить с менеджером.",
                 html:
@@ -808,16 +808,16 @@ bot.command('Не хочу', async (ctx) => {
             })
 
             let transporter = nodemailer.createTransport({
-                service: 'gmail',
+                service: process.argv[6],
                 auth: {
-                    user: 'vladislav0161@gmail.com',
-                    pass: 'Vladik123',
+                    user: process.argv[3],
+                    pass: process.argv[4],
                 },
             })
 
             await transporter.sendMail({
-                from: '"Чат-бот "Вакансии" <vladislav0161@gmail.com>',
-                to: 'vladislav0151@bk.ru',
+                from: '"Чат-бот "Вакансии" <' + process.argv[3] + ">",
+                to: process.argv[5],
                 subject: 'Заявка по вакансии "' + ctx.session.choosen_name + '"',
                 text: "Пользователь https://vk.com/id" + ctx.session.from_id + " оставил заявку по вакансии '" + ctx.session.choosen_name
                     + "'. Информация:\nФИО: " + ctx.session.fullname + "\nE-mail: " + ctx.session.email + "\nТелефон: " + ctx.session.number.toString() + "\nСопроводительная информация: "
