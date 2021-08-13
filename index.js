@@ -42,8 +42,6 @@ const bot = new VkBot(api_key);
 let CHOOSEN_ID = 0;
 let CHOOSEN_NAME = "";
 
-// айди ВК страницы менеджера. Можно сделать чтобы их несколько было. Это цифры в ссылке на страницу, либо можно узнать в настройках аккаунта.
-
 const scene = new Scene('deal',
     (ctx) => {
         ctx.scene.next();
