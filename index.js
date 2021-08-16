@@ -144,19 +144,17 @@ const scene_tz = new Scene('want_tz',
 
                 const lpSettings = {
                     forGetLongPollServer: {
-                        lp_version: 3, // Изменяем версию LongPoll, в EasyVK используется версия 2
+                        lp_version: 3,
                         need_pts: 1
                     },
                     forLongPollServer: {
-                        wait: 15 // Ждем ответа 15 секунд
+                        wait: 15
                     }
                 }
 
-                const random = (min, max) => Math.floor(Math.random() * (max - min)) + min;
-
                 await vk.call("messages.send", {
                     user_id: MANAGER_ID,
-                    random_id: random(1, 100000),
+                    random_id: easyvk.randomId(),
                     peer_id: MANAGER_ID,
                     message: "Пользователь https://vk.com/id" + ctx.session.from_id + " оставил заявку по вакансии '" + ctx.session.choosen_name
                         + "'. Информация:\nФИО: " + ctx.session.fullname + "\nE-mail: " + ctx.session.email + "\nТелефон: " + ctx.session.number.toString() + "\nСопроводительная информация: "
@@ -252,7 +250,7 @@ const scene_tz = new Scene('want_tz',
                     let server = vk.uploader;
                     let url = serv.upload_url
 
-                    server.upload({
+                    await server.upload({
                         getUrlMethod: "docs.getMessagesUploadServer",
                         getUrlParams: {
                             type: "doc",
@@ -289,11 +287,9 @@ const scene_tz = new Scene('want_tz',
                     }
                 }
 
-                const random = (min, max) => Math.floor(Math.random() * (max - min)) + min;
-
                 await vk.call("messages.send", {
                     user_id: MANAGER_ID,
-                    random_id: random(1, 100000),
+                    random_id: easyvk.randomId(),
                     peer_id: MANAGER_ID,
                     message: "Пользователь https://vk.com/id" + ctx.session.from_id + " оставил заявку по вакансии '" + ctx.session.choosen_name
                         + "'. Информация:\nФИО: " + ctx.session.fullname + "\nE-mail: " + ctx.session.email + "\nТелефон: " + ctx.session.number.toString() + "\nСопроводительная информация: "
@@ -415,15 +411,14 @@ const scene_manager = new Scene('manager',
                     })
                 }
 
-                const random = (min, max) => Math.floor(Math.random() * (max - min)) + min;
-                let flag = true;
                 vk.longpoll.connect(lpSettings).then((lpcon) => {
+                    let flag = true;
                     lpcon.on("message", async (msg) => {
                         let fullMessage = await getMessage(msg);
                         fullMessage = fullMessage.items[0]
                         while (flag) {
-                            await sendMessageToManager(MANAGER_ID, easyvk.randomId(), MANAGER_ID, "Пользователь https://vk.com/id" + fullMessage.peer_id.toString() + " хочет пообщаться с менеджером по поводу вакансий.")
                             flag = false
+                            await sendMessageToManager(MANAGER_ID, easyvk.randomId(), MANAGER_ID, "Пользователь https://vk.com/id" + fullMessage.peer_id.toString() + " хочет пообщаться с менеджером по поводу вакансий.")
                         }
                     })
                 })
@@ -735,8 +730,6 @@ bot.command(['Хочу посмотреть открытые вакансии!',
 
                         span.innerHTML = span.innerHTML.replace(/\n{2,}/g, "\n\n");
 
-                        span.innerHTML = span.innerHTML.replace(/\n{2,}/g, "\n\n");
-
                         span.innerHTML = span.innerHTML.replace(/\n\s/g, "\n");
 
                         ctx.session.choosen_id = fullArr[i].id;
@@ -812,11 +805,9 @@ bot.command('Не хочу', async (ctx) => {
             }
         }).then(async vk => {
 
-            const random = (min, max) => Math.floor(Math.random() * (max - min)) + min;
-
             await vk.call("messages.send", {
                 user_id: MANAGER_ID,
-                random_id: random(1, 100000),
+                random_id: easyvk.randomId(),
                 peer_id: MANAGER_ID,
                 message: "Пользователь https://vk.com/id" + ctx.session.from_id + " оставил заявку по вакансии '" + ctx.session.choosen_name
                     + "'. Информация:\nФИО: " + ctx.session.fullname + "\nE-mail: " + ctx.session.email + "\nТелефон: " + ctx.session.number.toString() + "\nСопроводительная информация: "

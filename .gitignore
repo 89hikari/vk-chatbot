@@ -1,10 +1,5 @@
 /node_modules
 /files
 vksession
-*.zip
-*.7z
-*.html
-*.doc
-*.docx
 input_params.json
 vacancies.json
