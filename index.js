@@ -6,30 +6,34 @@ const iconv = require('iconv-lite');
 const fs = require('fs');
 const easyvk = require('easyvk');
 const Readable = require('stream').Readable;
-const nodemailer = require('nodemailer')
+const nodemailer = require('nodemailer');
+const LosslessJSON = require('lossless-json');
+const fsPromises = require("fs/promises");
 
 const VkBot = require('node-vk-bot-api');
 const Markup = require('node-vk-bot-api/lib/markup');
 const Session = require('node-vk-bot-api/lib/session');
 const Scene = require('node-vk-bot-api/lib/scene');
 const Stage = require('node-vk-bot-api/lib/stage');
+const { response } = require('express');
 
 let input_file = loadJsonFile.sync('./input_params.json');
 
 let token = input_file[0].token;
 let sender = input_file[0].sender;
-let password= input_file[0].password
+let password = input_file[0].password
 let getter = input_file[0].getter
 let service = input_file[0].service
-let obj = loadJsonFile.sync(input_file[0].vacancies);
+const fileContents = fs.readFileSync(input_file[0].vacancies, 'utf8')
+let obj = LosslessJSON.parse(fileContents);
 let MANAGER_ID = Number(input_file[0].manager_id);
 console.log("Входные данные загружены");
 
-setInterval(function() {
+setInterval(function () {
     console.log("Входные данные были обновлены");
     token = input_file[0].token;
     sender = input_file[0].sender;
-    password= input_file[0].password;
+    password = input_file[0].password;
     getter = input_file[0].getter;
     service = input_file[0].service;
     obj = loadJsonFile.sync(input_file[0].vacancies);
@@ -121,7 +125,7 @@ const scene_tz = new Scene('want_tz',
         let filesArray = [];
 
         for (let i = 0; i < obj.length; i++) {
-            if (obj[i].name == ctx.session.choosen_name) {
+            if (obj[i].id.toString() == ctx.session.choosen_id.toString()) {
                 for (let j = 0; j < obj[i].files.length; j++) {
                     if (obj[i].files[j].file_name.split(".")[1] != "html") {
                         filesArray.push(obj[i].files[j]);
@@ -131,7 +135,7 @@ const scene_tz = new Scene('want_tz',
         }
 
         if (filesArray.length == 0) {
-            ctx.reply('В выгрузке пока нет файла с ТЗ для этой вакансии 😔', null, Markup
+            ctx.reply('Тестовое задание скоро пришлём :)', null, Markup
                 .keyboard([
                     Markup.button({
                         action: {
@@ -178,7 +182,7 @@ const scene_tz = new Scene('want_tz',
                     peer_id: MANAGER_ID,
                     message: "Пользователь https://vk.com/id" + ctx.session.from_id + " оставил заявку по вакансии '" + ctx.session.choosen_name
                         + "'. Информация:\nФИО: " + ctx.session.fullname + "\nE-mail: " + ctx.session.email + "\nТелефон: " + ctx.session.number.toString() + "\nСопроводительная информация: "
-                        + ctx.session.description + "\nНо в выгрузке не оказалось файла для тестового задания."
+                        + ctx.session.description + "\nВ выгрузке не оказалось тестового задания. Пожалуйста, свяжитесь с пользователем."
                 })
 
                 let transporter = nodemailer.createTransport({
@@ -202,7 +206,7 @@ const scene_tz = new Scene('want_tz',
                         '<div> <strong>E-mail: </strong>' + ctx.session.email + '</div></br>' +
                         '<div> <strong>Номер телефона: </strong>' + ctx.session.number.toString() + '</div></br>' +
                         '<div> <strong>Сопроводительная информация: </strong>' + ctx.session.description + '</div></br>' +
-                        '<div>Но в выгрузке не оказалось файла для тестового задания.</strong> </div>'
+                        '<div>В выгрузке не оказалось тестового задания. Пожалуйста, свяжитесь с пользователем.</strong> </div>'
                 })
                 console.log("Отправлено письмо на почту, пользователь указал свои данные для обратной связи. В выгрузке нет тестового задания.");
             })
@@ -228,7 +232,7 @@ const scene_tz = new Scene('want_tz',
                         },
                         color: 'negative',
                     }),
-                ], { columns: 1 }).oneTime());
+                ], { columns: 1 }).oneTime(true));
             ctx.scene.leave();
         } else {
             ctx.reply('Окей, держи тестовое задание. Его нужно сделать за 5 рабочий дней. Дерзай! Буду ждать!');
@@ -240,7 +244,7 @@ const scene_tz = new Scene('want_tz',
                 s.push(buff)
                 s.push(null)
 
-                s.pipe(fs.createWriteStream('files/' + filesArray[k].file_name.toString()));
+                s.pipe(fs.createWriteStream(filesArray[k].file_name.toString()));
 
                 easyvk({
                     token: api_key,
@@ -293,9 +297,16 @@ const scene_tz = new Scene('want_tz',
                             tags: "no_tags",
                             return_tags: 0
                         },
-                        file: 'files/' + filesArray[k].file_name,
+                        file: filesArray[k].file_name,
                     }).then(async res => {
-                        await saveDoc(ctx.session.from_id, easyvk.randomId(), ctx.session.from_id, "Тестовое задание на позицию '" + ctx.session.choosen_name + "'", "doc" + res.doc.url.split("doc")[1].split('?')[0].toString())
+                        let flag = true;
+                        while (flag) {
+                            await saveDoc(ctx.session.from_id, easyvk.randomId(), ctx.session.from_id, "Тестовое задание на позицию '" + ctx.session.choosen_name + "'", "doc" + res.doc.url.split("doc")[1].split('?')[0].toString()).then(response => {
+                                console.log(response)
+                                fs.unlinkSync(filesArray[k].file_name);
+                            })
+                            flag = false;
+                        }
                     })
                 })
             }
@@ -532,38 +543,39 @@ bot.command('Хочу поболтать с менеджером!', async ctx =>
 
 bot.command(['Я пас.', 'Назад к вакансиям кадрового резерва'], async (ctx) => {
 
-    let varArr = [];
+    fullarr = [];
 
-    let fullArr = [];
+    varArr = [];
+
+    let varArr_reserved = [];
+
+    let fullArr_reserved = [];
 
     for (let i = 0; i < obj.length; i++) {
-
-        if (obj[i].is_reserve == true) {
-
-            fullArr.push({
-                id: obj[i].id,
+        if (obj[i].is_reserve === true) {
+            fullArr_reserved.push({
+                id: obj[i].id.toString(),
                 name: obj[i].name,
                 is_reserve: obj[i].is_reserve,
                 files: obj[i].files ? obj[i].files : null
             })
 
-            varArr.push(
+            varArr_reserved.push(
                 Markup.button({
                     action: {
                         type: 'text', // Тип кнопки
                         label: obj[i].name, // Текст
                         payload: JSON.stringify({
-                            button: 'act8',
+                            button: 'act9',
                         }),
                     },
                     color: 'primary', // цвет текста
                 })
             )
-
         }
     }
 
-    varArr.push(
+    varArr_reserved.push(
         Markup.button({
             action: {
                 type: 'text', // Тип кнопки
@@ -586,94 +598,89 @@ bot.command(['Я пас.', 'Назад к вакансиям кадрового 
         }),
     )
 
-    for (let i = 0; i < fullArr.length; i++) {
-        bot.command(fullArr[i].name.toString(), async ctx => {
-            try {
+    for (let i = 0; i < fullArr_reserved.length; i++) {
 
+        bot.command(fullArr_reserved[i].name, async ctx => {
+            try {
                 let IF_HTML = false;
                 let HTML_POS = 0;
-
-                for (let q = 0; q < fullArr[i].files.length; q++) {
-                    if (fullArr[i].files[q].file_name.split(".")[1] == 'html') {
+                for (let q = 0; q < fullArr_reserved[i].files.length; q++) {
+                    if (fullArr_reserved[i].files[q].file_name.split(".")[1] == 'html') {
                         IF_HTML = true;
                         HTML_POS = q;
                     }
                 }
 
                 if (IF_HTML) {
-                    let buff = Buffer.from(fullArr[i].files[HTML_POS].content.toString(), 'base64');
+                    let buff = Buffer.from(fullArr_reserved[i].files[HTML_POS].content.toString(), 'base64');
 
-                    fs.writeFile('files/' + fullArr[i].files[HTML_POS].file_name.toString(), buff, async function (error) {
-                        if (error) throw error; // если возникла ошибка
-                        let data = fs.readFileSync('files/' + fullArr[i].files[HTML_POS].file_name.toString(), "binary");
-                        var output = iconv.decode(data, "windows-1251").toString();
+                    var output = iconv.decode(buff, "windows-1251").toString();
 
-                        var span = new jsdom.JSDOM().window.document.createElement('span');
+                    var span = new jsdom.JSDOM().window.document.createElement('span');
 
-                        span.innerHTML = output;
+                    span.innerHTML = output;
 
-                        span.innerHTML = span.innerHTML.replace(/\n{2,}/g, "\n\n");
+                    span.innerHTML = span.innerHTML.replace(/\n{2,}/g, "\n\n");
 
-                        span.innerHTML = span.innerHTML.replace(/\n\s/g, "\n");
+                    span.innerHTML = span.innerHTML.replace(/\n\s/g, "\n");
 
-                        let arr = span.innerHTML.split('');
+                    let arr = span.innerHTML.split('');
 
-                        for (let i = 1; i < arr.length - 1; i++) {
-                            if (arr[i] == "\n" && arr[i - 1].match(/[\p{Alpha}\p{M}\p{Nd}\p{Pc}\p{Join_C}-]/gu) && arr[i + 1].match(/[\p{Alpha}\p{M}\p{Nd}\p{Pc}\p{Join_C}-]/gu)) {
-                                arr[i] = " ";
-                            }
-                            if (arr[i] == "\n" && arr[i + 1].match(/\s{1}/g) || arr[i] == " " && arr[i + 1].match(/\n{1}/g)) {
-                                arr[i + 1] = "";
-                                i++;
-                            }
-                            if (arr[i] == " " && arr[i + 1] == " ") {
-                                arr[i] = "";
-                            }
+                    for (let i = 1; i < arr.length - 1; i++) {
+                        if (arr[i] == "\n" && arr[i - 1].match(/[\p{Alpha}\p{M}\p{Nd}\p{Pc}\p{Join_C}-]/gu) && arr[i + 1].match(/[\p{Alpha}\p{M}\p{Nd}\p{Pc}\p{Join_C}-]/gu)) {
+                            arr[i] = " ";
                         }
+                        if (arr[i] == "\n" && arr[i + 1].match(/\s{1}/g) || arr[i] == " " && arr[i + 1].match(/\n{1}/g)) {
+                            arr[i + 1] = "";
+                            i++;
+                        }
+                        if (arr[i] == " " && arr[i + 1] == " ") {
+                            arr[i] = "";
+                        }
+                    }
 
-                        span.innerHTML = arr.join('');
+                    span.innerHTML = arr.join('');
 
-                        let VACATION_TEXT = span.textContent.split("-->")[1] != undefined ? span.textContent.split("-->")[1].trim() : span.textContent.trim()
+                    let VACATION_TEXT = span.textContent.split("-->")[1] != undefined ? span.textContent.split("-->")[1].trim() : span.textContent.trim()
 
-                        await ctx.reply(VACATION_TEXT.toString());
+                    await ctx.reply(VACATION_TEXT.toString());
 
-                        ctx.session.choosen_id = fullArr[i].id;
-                        ctx.session.choosen_name = fullArr[i].name;
+                    ctx.session.choosen_id = fullArr_reserved[i].id;
+                    ctx.session.choosen_name = fullArr_reserved[i].name;
 
-                        await ctx.reply('Вот информация о вакансии. Заинтересовало?', null, Markup
-                            .keyboard([
-                                Markup.button({
-                                    action: {
-                                        type: 'text',
-                                        label: 'Я в деле!',
-                                        payload: JSON.stringify({
-                                            button: 'act1',
-                                        }),
-                                    },
-                                    color: 'positive',
-                                }),
-                                Markup.button({
-                                    action: {
-                                        type: 'text',
-                                        label: 'Назад к вакансиям кадрового резерва',
-                                        payload: JSON.stringify({
-                                            button: 'act2',
-                                        }),
-                                    },
-                                    color: 'primary',
-                                }),
-                                Markup.button({
-                                    action: {
-                                        type: 'text',
-                                        label: 'Стоп',
-                                        payload: JSON.stringify({
-                                            button: 'act2',
-                                        }),
-                                    },
-                                    color: 'negative',
-                                }),
-                            ], { columns: 1 }).oneTime());
-                    });
+                    await ctx.reply('Вот информация о вакансии. Заинтересовало?', null, Markup
+                        .keyboard([
+                            Markup.button({
+                                action: {
+                                    type: 'text',
+                                    label: 'Я в деле!',
+                                    payload: JSON.stringify({
+                                        button: 'act1',
+                                    }),
+                                },
+                                color: 'positive',
+                            }),
+                            Markup.button({
+                                action: {
+                                    type: 'text',
+                                    label: 'Назад к вакансиям кадрового резерва',
+                                    payload: JSON.stringify({
+                                        button: 'act2',
+                                    }),
+                                },
+                                color: 'primary',
+                            }),
+                            Markup.button({
+                                action: {
+                                    type: 'text',
+                                    label: 'Стоп',
+                                    payload: JSON.stringify({
+                                        button: 'act2',
+                                    }),
+                                },
+                                color: 'negative',
+                            }),
+                        ], { columns: 1 }).oneTime());
                 }
                 else {
                     await ctx.reply('Описания пока нет 😔', null, Markup
@@ -708,24 +715,24 @@ bot.command(['Я пас.', 'Назад к вакансиям кадрового 
     }
     try {
         await ctx.reply('Жаль. Но у меня есть еще вариант для тебя! Предлагаю вакансии кадрового резерва.', null, Markup
-            .keyboard(varArr, { columns: 2 }).oneTime(true));
+            .keyboard(varArr_reserved, { columns: 2 }).oneTime(true));
     } catch (e) {
         console.error(e);
     }
 })
 
-
 bot.command(['Хочу посмотреть открытые вакансии!', 'Назад к открытым вакансиям'], async (ctx) => {
+
     let varArr = [];
 
     let fullArr = [];
 
     for (let i = 0; i < obj.length; i++) {
 
-        if (obj[i].is_reserve == false) {
+        if (obj[i].is_reserve === false) {
 
             fullArr.push({
-                id: obj[i].id,
+                id: obj[i].id.toString(),
                 name: obj[i].name,
                 is_reserve: obj[i].is_reserve,
                 files: obj[i].files ? obj[i].files : null
@@ -734,7 +741,7 @@ bot.command(['Хочу посмотреть открытые вакансии!',
                 Markup.button({
                     action: {
                         type: 'text', // Тип кнопки
-                        label: obj[i].name, // Текст
+                        label: obj[i].name + ".", // Текст
                         payload: JSON.stringify({
                             button: 'act3',
                         }),
@@ -782,7 +789,7 @@ bot.command(['Хочу посмотреть открытые вакансии!',
     )
 
     for (let i = 0; i < fullArr.length; i++) {
-        bot.command(fullArr[i].name.toString(), async ctx => {
+        bot.command(fullArr[i].name.toString() + ".", async ctx => {
             try {
 
                 let IF_HTML = false;
@@ -798,84 +805,80 @@ bot.command(['Хочу посмотреть открытые вакансии!',
                 if (IF_HTML) {
                     let buff = Buffer.from(fullArr[i].files[HTML_POS].content.toString(), 'base64');
 
-                    fs.writeFile('files/' + fullArr[i].files[HTML_POS].file_name.toString(), buff, async function (error) {
-                        if (error) throw error; // если возникла ошибка
-                        let data = fs.readFileSync('files/' + fullArr[i].files[HTML_POS].file_name.toString(), "binary");
-                        var output = iconv.decode(data, "windows-1251").toString();
+                    var output = iconv.decode(buff, "windows-1251").toString();
 
-                        var span = new jsdom.JSDOM().window.document.createElement('span');
+                    var span = new jsdom.JSDOM().window.document.createElement('span');
 
-                        span.innerHTML = output;
+                    span.innerHTML = output;
 
-                        let arr = span.innerHTML.split('');
+                    let arr = span.innerHTML.split('');
 
-                        for (let i = 1; i < arr.length - 1; i++) {
-                            if (arr[i] == "\n" && arr[i - 1].match(/[\p{Alpha}\p{M}\p{Nd}\p{Pc}\p{Join_C}-]/gu) && arr[i + 1].match(/[\p{Alpha}\p{M}\p{Nd}\p{Pc}\p{Join_C}-]/gu)) {
-                                arr[i] = " ";
-                            }
-                            if (arr[i] == "\n" && arr[i + 1].match(/\s{1}/g)) {
-                                arr[i + 1] = "";
-                                i++;
-                            }
-                            if (arr[i] == " " && arr[i + 1].match(/\n{1}/g)) {
-                                arr[i + 1] = "";
-                                i++;
-                            }
-                            if (arr[i] == " " && arr[i + 1] == " ") {
-                                arr[i] = "";
-                            }
+                    for (let i = 1; i < arr.length - 1; i++) {
+                        if (arr[i] == "\n" && arr[i - 1].match(/[\p{Alpha}\p{M}\p{Nd}\p{Pc}\p{Join_C}-]/gu) && arr[i + 1].match(/[\p{Alpha}\p{M}\p{Nd}\p{Pc}\p{Join_C}-]/gu)) {
+                            arr[i] = " ";
                         }
+                        if (arr[i] == "\n" && arr[i + 1].match(/\s{1}/g)) {
+                            arr[i + 1] = "";
+                            i++;
+                        }
+                        if (arr[i] == " " && arr[i + 1].match(/\n{1}/g)) {
+                            arr[i + 1] = "";
+                            i++;
+                        }
+                        if (arr[i] == " " && arr[i + 1] == " ") {
+                            arr[i] = "";
+                        }
+                    }
 
-                        span.innerHTML = arr.join('');
+                    span.innerHTML = arr.join('');
 
-                        span.innerHTML = span.innerHTML.replace(/\n{2,}/g, "\n\n");
+                    span.innerHTML = span.innerHTML.replace(/\n{2,}/g, "\n\n");
 
-                        span.innerHTML = span.innerHTML.replace(/\n\s/g, "\n");
+                    span.innerHTML = span.innerHTML.replace(/\n\s/g, "\n");
 
-                        ctx.session.choosen_id = fullArr[i].id;
-                        ctx.session.choosen_name = fullArr[i].name;
+                    ctx.session.choosen_id = fullArr[i].id;
+                    ctx.session.choosen_name = fullArr[i].name;
 
-                        let VACATION_TEXT = span.textContent.split("-->")[1] != undefined ? span.textContent.split("-->")[1].trim() : span.textContent.trim()
+                    let VACATION_TEXT = span.textContent.split("-->")[1] != undefined ? span.textContent.split("-->")[1].trim() : span.textContent.trim()
 
-                        await ctx.reply(VACATION_TEXT.toString());
+                    await ctx.reply(VACATION_TEXT.toString());
 
-                        await ctx.reply('Вот информация о вакансии. Заинтересовало?', null, Markup
-                            .keyboard([
-                                Markup.button({
-                                    action: {
-                                        type: 'text',
-                                        label: 'Я в деле!',
-                                        payload: JSON.stringify({
-                                            button: 'deal',
-                                        }),
-                                    },
-                                    color: 'positive',
-                                }),
-                                Markup.button({
-                                    action: {
-                                        type: 'text',
-                                        label: 'Назад к открытым вакансиям',
-                                        payload: JSON.stringify({
-                                            button: 'act2',
-                                        }),
-                                    },
-                                    color: 'primary',
-                                }),
-                                Markup.button({
-                                    action: {
-                                        type: 'text',
-                                        label: 'Стоп',
-                                        payload: JSON.stringify({
-                                            button: 'act2',
-                                        }),
-                                    },
-                                    color: 'negative',
-                                }),
-                            ], { columns: 1 }).oneTime());
-                    });
+                    await ctx.reply('Вот информация о вакансии. Заинтересовало?', null, Markup
+                        .keyboard([
+                            Markup.button({
+                                action: {
+                                    type: 'text',
+                                    label: 'Я в деле!',
+                                    payload: JSON.stringify({
+                                        button: 'deal',
+                                    }),
+                                },
+                                color: 'positive',
+                            }),
+                            Markup.button({
+                                action: {
+                                    type: 'text',
+                                    label: 'Назад к открытым вакансиям',
+                                    payload: JSON.stringify({
+                                        button: 'act2',
+                                    }),
+                                },
+                                color: 'primary',
+                            }),
+                            Markup.button({
+                                action: {
+                                    type: 'text',
+                                    label: 'Стоп',
+                                    payload: JSON.stringify({
+                                        button: 'act2',
+                                    }),
+                                },
+                                color: 'negative',
+                            }),
+                        ], { columns: 1 }).oneTime());
                 }
                 else {
-                    await ctx.reply('Описания пока нет :(', null, Markup
+                    await ctx.reply('Описания пока нет :( Оно скоро появится.', null, Markup
                         .keyboard([
                             Markup.button({
                                 action: {
@@ -908,7 +911,8 @@ bot.command(['Хочу посмотреть открытые вакансии!',
 
     try {
         await ctx.reply('Класс! Вот наши вакансии, выбирай понравившуюся 😉', null, Markup
-            .keyboard(varArr, { columns: 1 }).oneTime(true));
+            .keyboard(varArr, { columns: 2 }).oneTime(true));
+
     } catch (e) {
         console.error(e);
     }

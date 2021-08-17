@@ -26,6 +26,7 @@
     "iconv-lite": "^0.6.3",
     "jsdom": "^16.7.0",
     "load-json-file": "^6.2.0",
+    "lossless-json": "^1.0.5",
     "node-vk-bot-api": "^3.5.0",
     "node-vk-sdk": "^1.1.7",
     "nodejs-nodemailer-outlook": "^1.2.4",
