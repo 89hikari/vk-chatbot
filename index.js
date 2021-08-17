@@ -299,14 +299,15 @@ const scene_tz = new Scene('want_tz',
                         },
                         file: filesArray[k].file_name,
                     }).then(async res => {
-                        let flag = true;
-                        while (flag) {
-                            await saveDoc(ctx.session.from_id, easyvk.randomId(), ctx.session.from_id, "Тестовое задание на позицию '" + ctx.session.choosen_name + "'", "doc" + res.doc.url.split("doc")[1].split('?')[0].toString()).then(response => {
-                                console.log(response)
-                                fs.unlinkSync(filesArray[k].file_name);
+                        await saveDoc(ctx.session.from_id, easyvk.randomId(), ctx.session.from_id, "Тестовое задание на позицию '" + ctx.session.choosen_name + "'", "doc" + res.doc.url.split("doc")[1].split('?')[0].toString()).then(response => {
+                            console.log(response)
+                            fs.unlink(filesArray[k].file_name, (err) => {
+                                if (err) {
+                                    console.error(err)
+                                    return
+                                }
                             })
-                            flag = false;
-                        }
+                        })
                     })
                 })
             }
