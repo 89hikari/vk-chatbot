@@ -28,6 +28,7 @@
     "load-json-file": "^6.2.0",
     "node-vk-bot-api": "^3.5.0",
     "node-vk-sdk": "^1.1.7",
+    "nodejs-nodemailer-outlook": "^1.2.4",
     "nodemailer": "^6.6.3",
     "stream": "0.0.2",
     "windows-1251": "^3.0.1"

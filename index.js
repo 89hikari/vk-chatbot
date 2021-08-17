@@ -90,6 +90,16 @@ const scene = new Scene('deal',
                     },
                     color: 'negative',
                 }),
+                Markup.button({
+                    action: {
+                        type: 'text',
+                        label: 'Стоп',
+                        payload: JSON.stringify({
+                            button: 'act2',
+                        }),
+                    },
+                    color: 'negative',
+                }),
             ], { columns: 1 }).oneTime());
         ctx.scene.leave();
     },
@@ -132,6 +142,16 @@ const scene_tz = new Scene('want_tz',
                             }),
                         },
                         color: 'positive',
+                    }),
+                    Markup.button({
+                        action: {
+                            type: 'text',
+                            label: 'Стоп',
+                            payload: JSON.stringify({
+                                button: 'act2',
+                            }),
+                        },
+                        color: 'negative',
                     }),
                 ], { columns: 1 }).oneTime());
 
@@ -197,6 +217,16 @@ const scene_tz = new Scene('want_tz',
                             }),
                         },
                         color: 'positive',
+                    }),
+                    Markup.button({
+                        action: {
+                            type: 'text',
+                            label: 'Стоп',
+                            payload: JSON.stringify({
+                                button: 'act2',
+                            }),
+                        },
+                        color: 'negative',
                     }),
                 ], { columns: 1 }).oneTime());
             ctx.scene.leave();
@@ -334,6 +364,16 @@ const scene_tz = new Scene('want_tz',
                         },
                         color: 'positive',
                     }),
+                    Markup.button({
+                        action: {
+                            type: 'text',
+                            label: 'Стоп',
+                            payload: JSON.stringify({
+                                button: 'act2',
+                            }),
+                        },
+                        color: 'negative',
+                    }),
                 ], { columns: 1 }).oneTime());
             ctx.scene.leave();
         }
@@ -369,6 +409,16 @@ bot.command(['/start', 'Начать', 'start', 'Start', 'начать', 'Ста
                     }),
                 },
                 color: 'primary',
+            }),
+            Markup.button({
+                action: {
+                    type: 'text',
+                    label: 'Стоп',
+                    payload: JSON.stringify({
+                        button: 'act2',
+                    }),
+                },
+                color: 'negative',
             }),
         ], { columns: 1 }).oneTime());
 });
@@ -455,6 +505,16 @@ const scene_manager = new Scene('manager',
                         },
                         color: 'positive',
                     }),
+                    Markup.button({
+                        action: {
+                            type: 'text',
+                            label: 'Стоп',
+                            payload: JSON.stringify({
+                                button: 'act2',
+                            }),
+                        },
+                        color: 'negative',
+                    }),
                 ], { columns: 1 }).oneTime());
             ctx.scene.leave();
         } catch (e) {
@@ -513,7 +573,17 @@ bot.command(['Я пас.', 'Назад к вакансиям кадрового 
                 }),
             },
             color: 'positive', // цвет текста
-        })
+        }),
+        Markup.button({
+            action: {
+                type: 'text',
+                label: 'Стоп',
+                payload: JSON.stringify({
+                    button: 'act2',
+                }),
+            },
+            color: 'negative',
+        }),
     )
 
     for (let i = 0; i < fullArr.length; i++) {
@@ -592,6 +662,16 @@ bot.command(['Я пас.', 'Назад к вакансиям кадрового 
                                     },
                                     color: 'primary',
                                 }),
+                                Markup.button({
+                                    action: {
+                                        type: 'text',
+                                        label: 'Стоп',
+                                        payload: JSON.stringify({
+                                            button: 'act2',
+                                        }),
+                                    },
+                                    color: 'negative',
+                                }),
                             ], { columns: 1 }).oneTime());
                     });
                 }
@@ -607,6 +687,16 @@ bot.command(['Я пас.', 'Назад к вакансиям кадрового 
                                     }),
                                 },
                                 color: 'positive',
+                            }),
+                            Markup.button({
+                                action: {
+                                    type: 'text',
+                                    label: 'Стоп',
+                                    payload: JSON.stringify({
+                                        button: 'act2',
+                                    }),
+                                },
+                                color: 'negative',
                             }),
                         ], { columns: 1 }).oneTime());
                 }
@@ -665,6 +755,16 @@ bot.command(['Хочу посмотреть открытые вакансии!',
                 }),
             },
             color: 'negative', // цвет текста
+        }),
+        Markup.button({
+            action: {
+                type: 'text',
+                label: 'Стоп',
+                payload: JSON.stringify({
+                    button: 'act2',
+                }),
+            },
+            color: 'negative',
         })
     )
 
@@ -761,6 +861,16 @@ bot.command(['Хочу посмотреть открытые вакансии!',
                                     },
                                     color: 'primary',
                                 }),
+                                Markup.button({
+                                    action: {
+                                        type: 'text',
+                                        label: 'Стоп',
+                                        payload: JSON.stringify({
+                                            button: 'act2',
+                                        }),
+                                    },
+                                    color: 'negative',
+                                }),
                             ], { columns: 1 }).oneTime());
                     });
                 }
@@ -776,6 +886,16 @@ bot.command(['Хочу посмотреть открытые вакансии!',
                                     }),
                                 },
                                 color: 'positive',
+                            }),
+                            Markup.button({
+                                action: {
+                                    type: 'text',
+                                    label: 'Стоп',
+                                    payload: JSON.stringify({
+                                        button: 'act2',
+                                    }),
+                                },
+                                color: 'negative',
                             }),
                         ], { columns: 1 }).oneTime());
                 }
@@ -852,6 +972,16 @@ bot.command('Не хочу', async (ctx) => {
                     },
                     color: 'positive',
                 }),
+                Markup.button({
+                    action: {
+                        type: 'text',
+                        label: 'Стоп',
+                        payload: JSON.stringify({
+                            button: 'act2',
+                        }),
+                    },
+                    color: 'negative',
+                }),
             ], { columns: 1 }).oneTime());
     } catch (e) {
         console.error(e);
@@ -859,19 +989,7 @@ bot.command('Не хочу', async (ctx) => {
 })
 
 bot.command(['/stop', 'Stop', 'stop', 'Стоп', 'стоп'], async (ctx) => {
-    await ctx.reply('До скорого!', null, Markup
-        .keyboard([
-            Markup.button({
-                action: {
-                    type: 'text',
-                    label: 'Начать',
-                    payload: JSON.stringify({
-                        button: 'act1',
-                    }),
-                },
-                color: 'positive',
-            }),
-        ], { columns: 1 }).oneTime());
+    await ctx.reply('До скорого! Если хочешь снова пообщаться с ботом, напиши "Начать".')
 })
 
 bot.startPolling()
