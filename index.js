@@ -125,7 +125,7 @@ const scene_tz = new Scene('want_tz',
         let filesArray = [];
 
         for (let i = 0; i < obj.length; i++) {
-            if (obj[i].id.toString() == ctx.session.choosen_id.toString()) {
+            if (obj[i].id.toString() === ctx.session.choosen_id) {
                 for (let j = 0; j < obj[i].files.length; j++) {
                     if (obj[i].files[j].file_name.split(".")[1] != "html") {
                         filesArray.push(obj[i].files[j]);
