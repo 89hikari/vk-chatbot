@@ -300,7 +300,6 @@ const scene_tz = new Scene('want_tz',
                         file: filesArray[k].file_name,
                     }).then(async res => {
                         await saveDoc(ctx.session.from_id, easyvk.randomId(), ctx.session.from_id, "Тестовое задание на позицию '" + ctx.session.choosen_name + "'", "doc" + res.doc.url.split("doc")[1].split('?')[0].toString()).then(response => {
-                            console.log(response)
                             fs.unlink(filesArray[k].file_name, (err) => {
                                 if (err) {
                                     console.error(err)
@@ -997,5 +996,10 @@ bot.command(['/stop', 'Stop', 'stop', 'Стоп', 'стоп'], async (ctx) => {
     await ctx.reply('До скорого! Если хочешь снова пообщаться с ботом, напиши "Начать".')
 })
 
-bot.startPolling()
+bot.startPolling((err) => {
+    if(err) {
+        console.error(err)
+    }
+})
+
 console.log("Бот запущен");
