@@ -50,12 +50,13 @@ let CHOOSEN_NAME = "";
 const scene = new Scene('deal',
     (ctx) => {
         ctx.scene.next();
-        ctx.session.from_id = ctx.message.from_id.toString()
         ctx.reply('Тогда прощаюсь, пиши свой комментарий, я его обязательно передам менеджеру.');
     },
-    async (ctx) => {
-        ctx.reply('Спасибо!\n\nЕсли хочешь снова пообщаться с ботом, напиши "Начать".');
+    (ctx) => {
+        ctx.session.from_id = ctx.message.from_id.toString()
         ctx.session.question = ctx.message.text;
+        ctx.scene.leave()
+        ctx.reply('Спасибо!\n\nЕсли хочешь снова пообщаться с ботом, напиши "Начать".');
         easyvk({
             token: api_key,
             utils: {
@@ -111,14 +112,13 @@ const scene = new Scene('deal',
             },
         })
 
-        await transporter.sendMail({
+        transporter.sendMail({
             from: '"Чат-бот "Вакансии" <' + sender + '>',
             to: getter,
             subject: 'Заявка от пользователя',
             text: "Пользователь https://vk.com/id" + ctx.message.from_id.toString() + " общался с ботом и задал вопрос: " + ctx.message.text,
             html: '<div>Пользователь <strong>https://vk.com/id' + ctx.message.from_id.toString() + ' </strong> общался с ботом и задал вопрос:<br/><br/>'+ ctx.message.text +'</div>'
         })
-        ctx.scene.leave()
     },
     (ctx) => {
         ctx.scene.next();
