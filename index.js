@@ -15,7 +15,9 @@ const Markup = require('node-vk-bot-api/lib/markup');
 const Session = require('node-vk-bot-api/lib/session');
 const Scene = require('node-vk-bot-api/lib/scene');
 const Stage = require('node-vk-bot-api/lib/stage');
-const { response } = require('express');
+const {
+    response
+} = require('express');
 
 let input_file = loadJsonFile.sync('./input_params.json');
 
@@ -46,6 +48,78 @@ let CHOOSEN_ID = 0;
 let CHOOSEN_NAME = "";
 
 const scene = new Scene('deal',
+    (ctx) => {
+        ctx.scene.next();
+        ctx.session.from_id = ctx.message.from_id.toString()
+        ctx.reply('Тогда прощаюсь, пиши свой комментарий, я его обязательно передам менеджеру.');
+    },
+    async (ctx) => {
+        ctx.reply('Спасибо!\n\nЕсли хочешь снова пообщаться с ботом, напиши "Начать".');
+        ctx.session.question = ctx.message.text;
+        easyvk({
+            token: api_key,
+            utils: {
+                longpoll: true
+            }
+        }).then(async vk => {
+
+            const lpSettings = {
+                forGetLongPollServer: {
+                    lp_version: 3, // Изменяем версию LongPoll, в EasyVK используется версия 2
+                    need_pts: 1
+                },
+                forLongPollServer: {
+                    wait: 15 // Ждем ответа 15 секунд
+                }
+            }
+
+            async function getMessage(msgArray = []) {
+                const MESSAGE_ID__INDEX = 1;
+
+                return vk.call('messages.getById', {
+                    message_ids: msgArray[MESSAGE_ID__INDEX]
+                })
+            }
+
+            async function sendMessageToManager(user, random, peer, mess) {
+                return vk.call("messages.send", {
+                    user_id: user,
+                    random_id: random,
+                    peer_id: peer,
+                    message: mess
+                })
+            }
+
+            vk.longpoll.connect(lpSettings).then((lpcon) => {
+                let flag = true;
+                lpcon.on("message", async (msg) => {
+                    let fullMessage = await getMessage(msg);
+                    fullMessage = fullMessage.items[0]
+                    while (flag) {
+                        flag = false
+                        await sendMessageToManager(MANAGER_ID, easyvk.randomId(), MANAGER_ID, "Пользователь https://vk.com/id" + fullMessage.peer_id.toString() + " общался с ботом и задал вопрос: \n\n" + ctx.message.text)
+                    }
+                })
+            })
+        })
+
+        let transporter = nodemailer.createTransport({
+            service: service,
+            auth: {
+                user: sender,
+                pass: password,
+            },
+        })
+
+        await transporter.sendMail({
+            from: '"Чат-бот "Вакансии" <' + sender + '>',
+            to: getter,
+            subject: 'Заявка от пользователя',
+            text: "Пользователь https://vk.com/id" + ctx.message.from_id.toString() + " общался с ботом и задал вопрос: " + ctx.message.text,
+            html: '<div>Пользователь <strong>https://vk.com/id' + ctx.message.from_id.toString() + ' </strong> общался с ботом и задал вопрос:<br/><br/>'+ ctx.message.text +'</div>'
+        })
+        ctx.scene.leave()
+    },
     (ctx) => {
         ctx.scene.next();
         ctx.session.from_id = ctx.message.from_id.toString()
@@ -124,22 +198,11 @@ const scene = new Scene('deal',
                     },
                     color: 'negative',
                 }),
-            ], { columns: 1 }).oneTime());
+            ], {
+                columns: 1
+            }).oneTime());
         ctx.scene.leave();
     },
-);
-
-const session = new Session();
-const stage_deal = new Stage(scene);
-
-bot.use(session.middleware());
-bot.use(stage_deal.middleware());
-
-bot.command('Я в деле!', (ctx) => {
-    ctx.scene.enter('deal');
-});
-
-const scene_tz = new Scene('want_tz',
     (ctx) => {
 
         ctx.reply('Тестовое задание скоро пришлём на твою почту, обязательно сообщи о получении письма 😉\n\nЕсли хочешь снова пообщаться с ботом, напиши "Начать". Если хочешь пообщаться с менеджером, просто напиши свой вопрос, менеджер обязательно ответит тебе в рабочее время.');
@@ -165,9 +228,9 @@ const scene_tz = new Scene('want_tz',
                 user_id: MANAGER_ID,
                 random_id: easyvk.randomId(),
                 peer_id: MANAGER_ID,
-                message: "Пользователь https://vk.com/id" + ctx.session.from_id + " оставил заявку по вакансии '" + ctx.session.choosen_name
-                    + "'. Информация:\nФИО: " + ctx.session.fullname + "\nE-mail: " + ctx.session.email + "\nТелефон: " + ctx.session.number.toString() + "\nСопроводительная информация: "
-                    + ctx.session.description
+                message: "Пользователь https://vk.com/id" + ctx.session.from_id + " оставил заявку по вакансии '" + ctx.session.choosen_name +
+                    "'. Информация:\nФИО: " + ctx.session.fullname + "\nE-mail: " + ctx.session.email + "\nТелефон: " + ctx.session.number.toString() + "\nСопроводительная информация: " +
+                    ctx.session.description
             })
 
             let transporter = nodemailer.createTransport({
@@ -182,11 +245,10 @@ const scene_tz = new Scene('want_tz',
                 from: '"Чат-бот "Вакансии" <' + sender + ">",
                 to: getter,
                 subject: 'Заявка по вакансии "' + ctx.session.choosen_name + '"',
-                text: "Пользователь https://vk.com/id" + ctx.session.from_id + " оставил заявку по вакансии '" + ctx.session.choosen_name
-                    + "'. Информация:\nФИО: " + ctx.session.fullname + "\nE-mail: " + ctx.session.email + "\nТелефон: " + ctx.session.number.toString() + "\nСопроводительная информация: "
-                    + ctx.session.description + "\nНо в выгрузке не оказалось файла для тестового задания.",
-                html:
-                    '<div>Пользователь <strong>https://vk.com/id' + ctx.session.from_id + ' </strong>оставил заявку по вакансии <i>' + ctx.session.choosen_name + '</i>. Информация:</div></br>' +
+                text: "Пользователь https://vk.com/id" + ctx.session.from_id + " оставил заявку по вакансии '" + ctx.session.choosen_name +
+                    "'. Информация:\nФИО: " + ctx.session.fullname + "\nE-mail: " + ctx.session.email + "\nТелефон: " + ctx.session.number.toString() + "\nСопроводительная информация: " +
+                    ctx.session.description + "\nНо в выгрузке не оказалось файла для тестового задания.",
+                html: '<div>Пользователь <strong>https://vk.com/id' + ctx.session.from_id + ' </strong>оставил заявку по вакансии <i>' + ctx.session.choosen_name + '</i>. Информация:</div></br>' +
                     '<div> <strong>ФИО: </strong>' + ctx.session.fullname + '</div></br>' +
                     '<div> <strong>E-mail: </strong>' + ctx.session.email + '</div></br>' +
                     '<div> <strong>Номер телефона: </strong>' + ctx.session.number.toString() + '</div></br>' +
@@ -197,11 +259,22 @@ const scene_tz = new Scene('want_tz',
     }
 );
 
-const stage_tz = new Stage(scene_tz);
-bot.use(stage_tz.middleware());
+const session = new Session();
+const stage_deal = new Stage(scene);
+
+bot.use(session.middleware());
+bot.use(stage_deal.middleware());
+
+bot.command('Я в деле!', (ctx) => {
+    ctx.scene.enter('deal', 2);
+});
+
+bot.command('Хочу поболтать с менеджером!', ctx => {
+    ctx.scene.enter('deal', 0);
+});
 
 bot.command('Хочу ТЗ!', (ctx) => {
-    ctx.scene.enter('want_tz');
+    ctx.scene.enter('deal', 7);
 });
 
 bot.command(['/start', 'Начать', 'start', 'Start', 'начать', 'Старт', 'старт', 'В начало'], (ctx) => {
@@ -237,91 +310,9 @@ bot.command(['/start', 'Начать', 'start', 'Start', 'начать', 'Ста
                 },
                 color: 'negative',
             }),
-        ], { columns: 1 }).oneTime());
-});
-
-const scene_manager = new Scene('manager',
-    async (ctx) => {
-        try {
-            ctx.scene.next();
-            easyvk({
-                token: api_key,
-                utils: {
-                    longpoll: true
-                }
-            }).then(async vk => {
-
-                const lpSettings = {
-                    forGetLongPollServer: {
-                        lp_version: 3, // Изменяем версию LongPoll, в EasyVK используется версия 2
-                        need_pts: 1
-                    },
-                    forLongPollServer: {
-                        wait: 15 // Ждем ответа 15 секунд
-                    }
-                }
-
-                async function getMessage(msgArray = []) {
-                    const MESSAGE_ID__INDEX = 1;
-
-                    return vk.call('messages.getById', {
-                        message_ids: msgArray[MESSAGE_ID__INDEX]
-                    })
-                }
-
-                async function sendMessageToManager(user, random, peer, mess) {
-                    return vk.call("messages.send", {
-                        user_id: user,
-                        random_id: random,
-                        peer_id: peer,
-                        message: mess
-                    })
-                }
-
-                vk.longpoll.connect(lpSettings).then((lpcon) => {
-                    let flag = true;
-                    lpcon.on("message", async (msg) => {
-                        let fullMessage = await getMessage(msg);
-                        fullMessage = fullMessage.items[0]
-                        while (flag) {
-                            flag = false
-                            await sendMessageToManager(MANAGER_ID, easyvk.randomId(), MANAGER_ID, "Пользователь https://vk.com/id" + fullMessage.peer_id.toString() + " хочет пообщаться с менеджером по поводу вакансий.")
-                        }
-                    })
-                })
-            })
-
-            let transporter = nodemailer.createTransport({
-                service: service,
-                auth: {
-                    user: sender,
-                    pass: password,
-                },
-            })
-
-            await transporter.sendMail({
-                from: '"Чат-бот "Вакансии" <' + sender + '>',
-                to: getter,
-                subject: 'Заявка от пользователя',
-                text: "Пользователь https://vk.com/id" + ctx.message.from_id.toString() + " хочет поговорить с менеджером.",
-                html:
-                    '<div>Пользователь <strong>https://vk.com/id' + ctx.message.from_id.toString() + ' </strong> хочет поговорить с менеджером.</div>'
-            })
-
-            await ctx.reply('Тогда прощаюсь, пиши свой комментарий, я его обязательно передам менеджеру.');
-            // await ctx.reply('До скорого! Если хочешь снова пообщаться с ботом, напиши "Начать". Если хочешь пообщаться с менеджером, просто напиши свой вопрос, менеджер обязательно ответит тебе в рабочее время.')
-            ctx.scene.leave();
-        } catch (e) {
-            console.error(e);
-        }
-    },
-);
-
-const stage_manager = new Stage(scene_manager);
-bot.use(stage_manager.middleware());
-
-bot.command('Хочу поболтать с менеджером!', async ctx => {
-    ctx.scene.enter('manager');
+        ], {
+            columns: 1
+        }).oneTime());
 });
 
 bot.command(['Я пас', 'Назад к вакансиям кадрового резерва'], async (ctx) => {
@@ -463,9 +454,10 @@ bot.command(['Я пас', 'Назад к вакансиям кадрового �
                                 },
                                 color: 'negative',
                             }),
-                        ], { columns: 1 }).oneTime());
-                }
-                else {
+                        ], {
+                            columns: 1
+                        }).oneTime());
+                } else {
                     await ctx.reply('Описания пока нет 😔', null, Markup
                         .keyboard([
                             Markup.button({
@@ -488,7 +480,9 @@ bot.command(['Я пас', 'Назад к вакансиям кадрового �
                                 },
                                 color: 'negative',
                             }),
-                        ], { columns: 1 }).oneTime());
+                        ], {
+                            columns: 1
+                        }).oneTime());
                 }
 
             } catch (e) {
@@ -498,7 +492,9 @@ bot.command(['Я пас', 'Назад к вакансиям кадрового �
     }
     try {
         await ctx.reply('Жаль. Но у меня есть еще вариант для тебя! Предлагаю вакансии кадрового резерва.', null, Markup
-            .keyboard(varArr_reserved, { columns: 2 }).oneTime(true));
+            .keyboard(varArr_reserved, {
+                columns: 2
+            }).oneTime(true));
     } catch (e) {
         console.error(e);
     }
@@ -657,9 +653,10 @@ bot.command(['Хочу посмотреть открытые вакансии!',
                                 },
                                 color: 'negative',
                             }),
-                        ], { columns: 1 }).oneTime());
-                }
-                else {
+                        ], {
+                            columns: 1
+                        }).oneTime());
+                } else {
                     await ctx.reply('Описания пока нет :( Оно скоро появится.', null, Markup
                         .keyboard([
                             Markup.button({
@@ -682,7 +679,9 @@ bot.command(['Хочу посмотреть открытые вакансии!',
                                 },
                                 color: 'negative',
                             }),
-                        ], { columns: 1 }).oneTime());
+                        ], {
+                            columns: 1
+                        }).oneTime());
                 }
 
             } catch (e) {
@@ -693,7 +692,9 @@ bot.command(['Хочу посмотреть открытые вакансии!',
 
     try {
         await ctx.reply('Класс! Вот наши вакансии, выбирай понравившуюся 😉', null, Markup
-            .keyboard(varArr, { columns: 2 }).oneTime(true));
+            .keyboard(varArr, {
+                columns: 2
+            }).oneTime(true));
 
     } catch (e) {
         console.error(e);
@@ -715,9 +716,9 @@ bot.command('Не хочу', async (ctx) => {
                 user_id: MANAGER_ID,
                 random_id: easyvk.randomId(),
                 peer_id: MANAGER_ID,
-                message: "Пользователь https://vk.com/id" + ctx.session.from_id + " оставил заявку по вакансии '" + ctx.session.choosen_name
-                    + "'. Информация:\nФИО: " + ctx.session.fullname + "\nE-mail: " + ctx.session.email + "\nТелефон: " + ctx.session.number.toString() + "\nСопроводительная информация: "
-                    + ctx.session.description + "\nПользователь отказался от получения тестового задания."
+                message: "Пользователь https://vk.com/id" + ctx.session.from_id + " оставил заявку по вакансии '" + ctx.session.choosen_name +
+                    "'. Информация:\nФИО: " + ctx.session.fullname + "\nE-mail: " + ctx.session.email + "\nТелефон: " + ctx.session.number.toString() + "\nСопроводительная информация: " +
+                    ctx.session.description + "\nПользователь отказался от получения тестового задания."
             })
 
             let transporter = nodemailer.createTransport({
@@ -732,11 +733,10 @@ bot.command('Не хочу', async (ctx) => {
                 from: '"Чат-бот "Вакансии" <' + sender + ">",
                 to: getter,
                 subject: 'Заявка по вакансии "' + ctx.session.choosen_name + '"',
-                text: "Пользователь https://vk.com/id" + ctx.session.from_id + " оставил заявку по вакансии '" + ctx.session.choosen_name
-                    + "'. Информация:\nФИО: " + ctx.session.fullname + "\nE-mail: " + ctx.session.email + "\nТелефон: " + ctx.session.number.toString() + "\nСопроводительная информация: "
-                    + ctx.session.description + "\nПользователю было выслано тестовое задание.",
-                html:
-                    '<div>Пользователь <strong>https://vk.com/id' + ctx.session.from_id + ' </strong>оставил заявку по вакансии <i>' + ctx.session.choosen_name + '</i>. Информация:</div></br>' +
+                text: "Пользователь https://vk.com/id" + ctx.session.from_id + " оставил заявку по вакансии '" + ctx.session.choosen_name +
+                    "'. Информация:\nФИО: " + ctx.session.fullname + "\nE-mail: " + ctx.session.email + "\nТелефон: " + ctx.session.number.toString() + "\nСопроводительная информация: " +
+                    ctx.session.description + "\nПользователю было выслано тестовое задание.",
+                html: '<div>Пользователь <strong>https://vk.com/id' + ctx.session.from_id + ' </strong>оставил заявку по вакансии <i>' + ctx.session.choosen_name + '</i>. Информация:</div></br>' +
                     '<div> <strong>ФИО: </strong>' + ctx.session.fullname + '</div></br>' +
                     '<div> <strong>E-mail: </strong>' + ctx.session.email + '</div></br>' +
                     '<div> <strong>Номер телефона: </strong>' + ctx.session.number.toString() + '</div></br>' +
